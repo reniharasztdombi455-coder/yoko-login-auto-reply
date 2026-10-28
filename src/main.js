@@ -27224,6 +27224,36 @@ function appAuthSenderAllowed(event){
   const loginAllowed=!!(appLoginWindow&&!appLoginWindow.isDestroyed()&&event?.sender===appLoginWindow.webContents);
   return mainAllowed||loginAllowed;
 }
+function appAuthRememberFilePath(){return path.join(app.getPath('userData'),'remembered-login.json');}
+function appAuthReadRememberedLogin(){
+  try{
+    if(!safeStorage.isEncryptionAvailable())return {ok:false,available:false,username:'',password:''};
+    const raw=JSON.parse(fs.readFileSync(appAuthRememberFilePath(),'utf8'));
+    const decrypted=safeStorage.decryptString(Buffer.from(String(raw.encrypted||''),'base64'));
+    const value=JSON.parse(decrypted);
+    return {ok:true,available:true,username:String(value.username||''),password:String(value.password||'')};
+  }catch{return {ok:true,available:safeStorage.isEncryptionAvailable(),username:'',password:''};}
+}
+ipcMain.handle('app-auth-remember-get',async(event)=>{
+  if(!appAuthSenderAllowed(event))throw Error('unauthorized-window');
+  return appAuthReadRememberedLogin();
+});
+ipcMain.handle('app-auth-remember-save',async(event,payload={})=>{
+  if(!appAuthSenderAllowed(event))throw Error('unauthorized-window');
+  const file=appAuthRememberFilePath();
+  if(payload?.remember!==true){
+    try{fs.unlinkSync(file);}catch{}
+    return {ok:true,remembered:false};
+  }
+  if(!safeStorage.isEncryptionAvailable())return {ok:false,remembered:false,error:'当前系统无法使用系统加密存储，未保存密码。'};
+  const username=String(payload?.username||'').trim().slice(0,120);
+  const password=String(payload?.password||'').slice(0,1024);
+  if(!username||!password)return {ok:false,remembered:false,error:'用户名或密码为空，未保存。'};
+  fs.mkdirSync(path.dirname(file),{recursive:true});
+  const encrypted=safeStorage.encryptString(JSON.stringify({username,password})).toString('base64');
+  fs.writeFileSync(file,JSON.stringify({version:1,encrypted}),{mode:0o600});
+  return {ok:true,remembered:true};
+});
 ipcMain.handle('app-auth-status',async(event)=>{
   if(!appAuthSenderAllowed(event))throw Error('unauthorized-window');
   appAuthReadUsers();
