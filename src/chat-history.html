@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob: https: yoko-history:; media-src 'self' data: blob: https: yoko-history:;" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Yoko SCRM · 聊天记录</title>
+  <link rel="stylesheet" href="./chat-history.css" />
+</head>
+<body>
+  <main class="history-shell">
+    <header class="history-head">
+      <div><h1>聊天记录</h1><p>本地归档已打开/加载过的客户会话，文字、图片和音频按真实顺序回看。</p></div>
+      <button id="captureBtn" type="button">同步当前聊天</button>
+    </header>
+    <section class="history-tools">
+      <input id="searchInput" type="search" placeholder="搜索客户、账号、最近内容…" autocomplete="off" />
+      <select id="platformFilter"><option value="">全部平台</option></select>
+      <select id="accountFilter"><option value="">全部账号</option></select>
+      <select id="typeFilter">
+        <option value="">全部内容</option>
+        <option value="text">只看文字</option>
+        <option value="image">只看图片</option>
+        <option value="audio">只看音频</option>
+        <option value="video">只看视频</option>
+      </select>
+    </section>
+    <section class="history-body">
+      <aside class="conversation-pane">
+        <div class="pane-title"><strong>客户会话</strong><span id="conversationCount">0</span></div>
+        <div id="conversationList" class="conversation-list"><div class="empty">正在读取聊天记录…</div></div>
+      </aside>
+      <section class="timeline-pane">
+        <div id="timelineHead" class="timeline-head"><div><strong>请选择客户</strong><small>左侧选择客户后查看聊天轨迹</small></div><span id="timelineCount">0 条</span></div>
+        <div id="timeline" class="timeline"><div class="empty big">这里会按时间顺序显示文字、图片和音频。</div></div>
+      </section>
+    </section>
+    <footer id="historyStatus" class="history-status">从 V1.23.31 起自动归档实际打开/加载过的会话；打开旧会话时会自动补录当前可见内容。</footer>
+  </main>
+  <div id="imageViewer" class="image-viewer hidden" role="dialog" aria-modal="true">
+    <button id="imageViewerClose" class="viewer-close" type="button">×</button>
+    <img id="imageViewerImg" alt="聊天图片预览" />
+    <div id="imageViewerMeta" class="viewer-meta"></div>
+  </div>
+  <script src="./chat-history.js"></script>
+</body>
+</html>

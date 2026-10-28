@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: yoko-speech:;" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Yoko SCRM · 话术库</title>
+  <link rel="stylesheet" href="./speech-library.css" />
+</head>
+<body>
+  <main class="library-shell">
+    <header class="library-head">
+      <div>
+        <h1>话术库</h1>
+        <p>按“阶段 / 主题 / 内容”整理话术。发送时可自动识别当前客户并加入称呼。</p>
+      </div>
+      <button id="refreshTargetBtn" type="button">读取当前聊天</button>
+    </header>
+
+    <section id="targetCard" class="target-card unavailable">
+      <div class="target-label">当前发送到</div>
+      <div class="target-copy">
+        <strong id="targetName">正在读取当前聊天…</strong>
+        <small id="targetMeta">请先打开一个客户会话</small>
+      </div>
+      <div class="target-address">
+        <span>自动称呼</span>
+        <strong id="targetSalutation">—</strong>
+      </div>
+      <span id="targetState" class="target-state">未选择</span>
+    </section>
+
+    <section class="library-toolbar">
+      <div class="toolbar-copy">
+        <strong>阶段化话术</strong>
+        <span>主题只用于管理，不会发送给客户。</span>
+      </div>
+      <span id="saveState">修改后自动保存</span>
+    </section>
+
+    <section class="library-workspace">
+      <aside class="stage-panel">
+        <div class="stage-panel-head">
+          <div>
+            <strong>聊天阶段</strong>
+            <small>第一天、第二天…</small>
+          </div>
+          <button id="addGroupBtn" class="primary compact" type="button">＋ 新增</button>
+        </div>
+        <nav id="stageList" class="stage-list" aria-label="话术阶段"></nav>
+      </aside>
+
+      <section class="editor-panel">
+        <div id="stageEditor" class="stage-editor"></div>
+      </section>
+    </section>
+
+    <footer class="library-footer">
+      <div id="status" class="status">选择客户后即可发送。编辑内容会自动保存到本机。</div>
+    </footer>
+  </main>
+
+  <div id="imagePreviewModal" class="image-preview-modal" hidden>
+    <button id="closeImagePreviewBtn" class="image-preview-close" type="button">×</button>
+    <img id="imagePreviewImage" alt="预设图片预览" />
+  </div>
+  <script src="./speech-library.js"></script>
+</body>
+</html>

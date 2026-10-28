@@ -1,0 +1,4 @@
+'use strict';
+const {contextBridge,ipcRenderer}=require('electron');
+const allow=new Set(['connect','login','me','users','createUser','manageUser','accountAudit','answers','approve','reject','batchReview','qaAudit','handoffs','claimHandoff','handoffHistory','resolve','state','saveState','inbox','pages','customers','setPageMode','getReceptionFlow','saveReceptionFlow','providerSettings','saveProviderSettings','testProvider','simulateReception','processInbox','getCustomerMode','setCustomerMode','daemonStatus','healthSummary','daemonHistory','usageSummary','readyDeliveries','reconcileDeliveries','deliveryStatus','dispatchApproved','logout']);
+contextBridge.exposeInMainWorld('yokoAiAccounts',{run:(action,payload={})=>{if(!allow.has(action))return Promise.reject(Error('unsupported-action'));return ipcRenderer.invoke('yoko-ai-accounts-action',action,payload);}});

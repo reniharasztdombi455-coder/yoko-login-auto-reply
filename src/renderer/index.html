@@ -1,0 +1,1851 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob: file: https: yoko-avatar:;"
+  />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Yoko SCRM</title>
+  <link rel="stylesheet" href="./styles.css" />
+  <style>
+    #officialApiLoginGate{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#eef4f8,#dce8f0);font-family:inherit}
+    #officialApiLoginGate.hidden{display:none}
+    .official-api-login-card{width:min(430px,calc(100vw - 40px));padding:32px;border-radius:18px;background:#fff;box-shadow:0 18px 60px rgba(26,55,76,.18);border:1px solid #dce7ee}
+    .official-api-login-card h1{margin:0 0 8px;font-size:25px;color:#183447}.official-api-login-card p{margin:0 0 24px;color:#607584;line-height:1.6}
+    .official-api-login-card label{display:block;margin:13px 0 6px;color:#365464;font-size:13px;font-weight:600}
+    .official-api-login-card input{box-sizing:border-box;width:100%;padding:11px 12px;border:1px solid #cbd9e1;border-radius:9px;font-size:15px;background:#fbfdfe}
+    .official-api-login-card button{width:100%;margin-top:18px;padding:12px;border:0;border-radius:9px;background:#2476a8;color:#fff;font-size:15px;font-weight:700;cursor:pointer}.official-api-login-card button:disabled{opacity:.6;cursor:wait}
+    #officialApiLoginStatus{min-height:22px;margin-top:12px;color:#b14635;font-size:13px;line-height:1.5}.official-api-login-hint{margin-top:18px!important;margin-bottom:0!important;font-size:12px!important;color:#7a8b96!important}
+    #officialApiUserBadge{display:none;align-items:center;gap:8px;margin-right:10px;color:#365464;font-size:12px}.official-api-logout-btn{border:1px solid #c8d6df;background:#fff;color:#365464;border-radius:7px;padding:5px 8px;cursor:pointer}
+  </style>
+</head>
+<body class="shell-app-center">
+  <section id="officialApiLoginGate" aria-label="软件账号登录">
+    <form id="officialApiLoginForm" class="official-api-login-card">
+      <h1>Yoko SCRM</h1>
+      <p>请输入软件账号和密码登录。未登录前无法进入应用中心。</p>
+      <label for="officialApiUsername">用户名</label>
+      <input id="officialApiUsername" type="text" autocomplete="username" required />
+      <label for="officialApiPassword">密码</label>
+      <input id="officialApiPassword" type="password" autocomplete="current-password" required />
+      <button id="officialApiLoginBtn" type="submit">登录软件</button>
+      <div id="officialApiLoginStatus" role="status"></div>
+      <p class="official-api-login-hint">首次使用默认账号：admin　密码：Admin@123456</p>
+    </form>
+  </section>
+  <aside id="globalAppRail" class="global-app-rail" aria-label="应用导航">
+    <button id="shellHomeBtn" class="global-app-rail-btn" type="button" title="首页"><span class="rail-home-icon">⌂</span><small>首页</small></button>
+    <button id="shellAppCenterBtn" class="global-app-rail-btn active" type="button" title="应用中心"><span class="rail-app-icon">▦</span><small>应用</small></button>
+    <button id="shellUnifiedAggregateBtn" class="global-app-rail-btn unified-aggregate" type="button" title="全平台聚合"><span class="rail-unified-icon">◎</span><small>聚合</small></button>
+    <button id="shellNativeApiBtn" class="global-app-rail-btn native-api" type="button" title="Facebook 官方 API 收件箱"><span class="rail-api-icon">API</span><small>官方</small><span id="nativeApiRailUnreadBadge" class="native-api-rail-unread hidden">0</span></button>
+    <button id="shellChatgptBtn" class="global-app-rail-btn chatgpt-workbench-btn" type="button" title="ChatGPT 网页工作台"><span class="rail-gpt-icon">GPT</span><small>GPT</small></button>
+    <div class="global-app-rail-separator"></div>
+    <button id="shellLineBtn" class="global-app-platform-btn platform-line" type="button" title="LINE" hidden><span>LINE</span><i class="rail-running-dot"></i></button>
+    <div id="installedAppRail" class="installed-app-rail" aria-label="已添加应用"></div>
+    <div class="global-app-rail-spacer"></div>
+    <button id="shellAddAppBtn" class="global-app-rail-btn global-app-rail-action add-app" type="button" title="添加应用" aria-expanded="false"><span>＋</span><small>添加应用</small></button>
+    <div id="shellQuickAddMenu" class="shell-quick-add-menu hidden" role="menu" aria-label="快速添加应用"></div>
+    <button id="shellRemoveAppBtn" class="global-app-rail-btn global-app-rail-action remove-app" type="button" title="移除应用" aria-expanded="false"><span>－</span><small>移除应用</small></button>
+    <div id="shellQuickRemoveMenu" class="shell-quick-add-menu shell-quick-remove-menu hidden" role="menu" aria-label="快速移除应用"></div>
+    <button id="shellSettingsBtn" class="global-app-rail-btn" type="button" title="设置"><span>⚙</span><small>设置</small></button>
+  </aside>
+  <header class="topbar">
+    <div class="topbar-row topbar-primary-row">
+      <div class="brand">Yoko SCRM <span id="version"></span></div>
+      <div class="workspace-mode-switch" role="group" aria-label="工作模式">
+        <button id="lineModeBtn" class="workspace-mode-btn active" type="button">LINE模式</button>
+        <button id="aggregateModeBtn" class="workspace-mode-btn" type="button">聚合模式<span id="aggregateUnreadBadge" class="workspace-unread hidden">0</span></button>
+      </div>
+      <span id="lineBusinessRoleBadge" class="business-role-badge relationship" title="LINE：长期聊天、关系维护、持续跟进">聊天经营</span>
+      <button id="addAccountBtn" class="primary">＋ 新增个人 LINE</button>
+      <div id="lineCustomerStats" class="topbar-customer-stats" aria-label="LINE 客户统计">
+        <span id="lineCustomerStatsScope" class="customer-stats-scope">当前账号</span>
+        <span>今日新进粉 <strong id="lineTodayNewCount">0</strong></span>
+        <span class="duplicate-stat">重复粉 <strong id="lineDuplicateCount">0</strong></span>
+      </div>
+      <button id="lineChatgptStyleBtn" class="gpt-style-top-btn" type="button" title="随时修改 ChatGPT 回复语气和中日双语输出格式">GPT语气</button>
+      <button id="lineChatgptPersonaBtn" class="gpt-style-top-btn" type="button" title="编辑固定人设和长期回复规则；新客户专属 GPT 会话只初始化一次">GPT人设/规则</button>
+      <button id="lineAutomationBtn" class="gpt-style-top-btn automation-top-btn" type="button" title="自动化发送安全底座、队列、防重复和诊断设置">自动化</button>
+      <button id="appCenterBtn" class="app-center-top-btn" type="button">▦ 应用中心</button>
+      <div class="topbar-spacer"></div>
+      <button id="performanceStatus" class="performance-status" type="button" title="点击打开性能诊断">性能 --</button>
+      <div id="officialApiUserBadge"><span id="officialApiUserName"></span><button id="officialApiLogoutBtn" class="official-api-logout-btn" type="button">退出软件账号</button></div>
+      <div class="status" id="globalStatus">准备就绪</div>
+    </div>
+    <div class="topbar-row topbar-action-row" aria-label="常用工具">
+      <button id="lineChatHistoryBtn" type="button" title="打开本地聊天记录中心，查看文字、图片、音频历史">聊天记录</button>
+      <button id="lineTeamHandoffBtn" type="button" title="团队云同步、跨设备 TikTok→LINE 客户承接">团队承接</button>
+      <button id="lineHandoffHealthBtn" type="button" title="查看 LINE 承接链路健康、异常原因和局部恢复">链路健康</button>
+      <button id="reloadBtn">刷新</button>
+      <button id="proxyBtn">代理</button>
+      <button id="refreshAvatarBtn" title="LINE模式：重抓当前账号头像；聚合模式：重抓所有已打开账号的客户头像">重抓头像</button>
+      <button id="globalTranslationSettingsBtn" type="button" title="所有平台共用的全局翻译设置">翻译设置</button>
+      <button id="lineFlowSettingsBtn" type="button" title="设置 LINE CRM 跟进阶段">流程</button>
+      <button id="lineSpeechLibraryBtn" type="button" title="打开预设话术库并发送到当前客户">话术库</button>
+      <button id="lineChatgptToggleBtn" type="button" title="在 Yoko 主窗口右侧打开真实 ChatGPT 独立网页窗口">打开GPT</button>
+      <button id="lineChatgptBindBtn" type="button" title="把当前客户绑定到右侧独立 ChatGPT 窗口正在打开的历史对话">绑定ChatGPT</button>
+      <button id="lineChatgptStageBtn" type="button" title="把客户最近连续发来的消息放入绑定的 ChatGPT 输入框；全部消息结尾只留一个“补充：”，先由你检查/补充，再手动发送">客户消息→GPT</button>
+      <button id="lineChatModeBtn" class="chat-mode-toggle hidden" type="button" title="当前客户聊天模式；点击切换接待/精聊">接待模式</button>
+      <button id="aiReplyBtn" class="ai-reply-top" hidden aria-hidden="true">AI回复</button>
+    </div>
+  </header>
+
+  <section id="appCenterPage" class="app-center-page" aria-label="应用中心">
+    <div class="app-center-content">
+      <section id="appCenterHomePane" class="app-center-pane hidden">
+        <div class="app-center-heading dashboard-heading">
+          <div><h1>Yoko 多平台数据中心</h1><p>统一查看今天的进粉、重复、LINE 转化、待回复和账号运行状态。数据来自各平台已同步客户与 CRM。</p></div>
+          <div class="dashboard-refresh-wrap"><span id="dashboardUpdatedAt">等待刷新</span><button id="appCenterHomeRefreshBtn" type="button">刷新数据</button></div>
+        </div>
+        <div class="app-dashboard-cards dashboard-kpi-grid">
+          <article class="dashboard-kpi"><span>今日新进粉</span><strong id="appDashTodayNew">0</strong><small>所有平台新增记录</small></article>
+          <article class="dashboard-kpi"><span>今日重复粉</span><strong id="appDashTodayDuplicate">0</strong><small>跨账号重复进入</small></article>
+          <article class="dashboard-kpi"><span>今日有效新客</span><strong id="appDashTodayValid">0</strong><small>已进入有效聊天阶段</small></article>
+          <article class="dashboard-kpi"><span>已添加 LINE</span><strong id="appDashLineAdded">0</strong><small>非 LINE 平台 CRM</small></article>
+          <article class="dashboard-kpi"><span>待回复</span><strong id="appDashWaiting">0</strong><small>当前需要跟进</small></article>
+          <article class="dashboard-kpi"><span>运行账号</span><strong id="appDashRunning">0/0</strong><small>当前运行 / 总账号</small></article>
+        </div>
+        <section id="customerNumberVaultPanel" class="app-dashboard-panel customer-number-vault-panel">
+          <div class="dashboard-panel-title customer-number-vault-title">
+            <div><h2>客户电话号码库</h2><p>独立保存 WS / 群组 / 社群中由你授权导入或确认的号码；删除群记录不会删除客户号码。</p></div>
+            <div class="customer-number-vault-actions"><button id="customerNumberVaultRefreshBtn" type="button">刷新</button><button id="customerNumberVaultImportBtn" type="button">导入 CSV</button><button id="customerNumberVaultExportBtn" type="button">导出 CSV</button><input id="customerNumberVaultFileInput" type="file" accept=".csv,text/csv" hidden /></div>
+          </div>
+          <div class="customer-number-vault-kpis"><span>唯一号码 <strong id="customerNumberVaultTotal">0</strong></span><span>今日新增 <strong id="customerNumberVaultToday">0</strong></span><span>群/社群 <strong id="customerNumberVaultGroups">0</strong></span><span>已删除群 <strong id="customerNumberVaultDeletedGroups">0</strong></span></div>
+          <form id="customerNumberVaultForm" class="customer-number-vault-form">
+            <input id="customerNumberVaultPhone" type="tel" required placeholder="电话号码，例如 +255 712 345 678" autocomplete="off" />
+            <select id="customerNumberVaultSourceType" aria-label="来源"><option value="whatsapp">WS 客户</option><option value="group">WhatsApp 群</option><option value="community">社群</option><option value="import">其他导入</option></select>
+            <input id="customerNumberVaultAccount" type="text" placeholder="WS账号/来源账号（可选）" autocomplete="off" />
+            <input id="customerNumberVaultGroup" type="text" placeholder="群组/社群名称（可选）" autocomplete="off" />
+            <button class="primary" type="submit">保存号码</button><button id="customerNumberVaultMarkGroupDeletedBtn" type="button" title="只标记群状态，不删除号码">标记群已删除</button>
+          </form>
+          <div id="customerNumberVaultStatus" class="customer-number-vault-status" role="status"></div>
+          <div id="customerNumberVaultTable" class="customer-number-vault-table"><div class="dashboard-empty">暂无号码记录</div></div>
+        </section>
+        <div class="dashboard-main-grid">
+          <section class="app-dashboard-panel dashboard-platform-panel">
+            <div class="dashboard-panel-title"><div><h2>各平台今日数据</h2><p>点击平台卡片可直接进入对应工作台</p></div></div>
+            <div id="appDashboardPlatformList" class="dashboard-platform-grid"></div>
+          </section>
+          <section class="app-dashboard-panel dashboard-trend-panel">
+            <div class="dashboard-panel-title"><div><h2>近 7 天进粉趋势</h2><p>新增与重复按客户首次进入日期统计</p></div><div class="dashboard-legend"><span><i class="new"></i>新进粉</span><span><i class="duplicate"></i>重复粉</span></div></div>
+            <div id="dashboardTrendChart" class="dashboard-trend-chart"><div class="dashboard-empty">暂无趋势数据</div></div>
+          </section>
+        </div>
+        <section id="leadFunnelCenter" class="app-dashboard-panel lead-funnel-center">
+          <div class="dashboard-panel-title lead-funnel-title">
+            <div><h2>引流漏斗数据中心</h2><p>仅统计 TikTok、Facebook、Instagram、Meta Business、WhatsApp、Telegram；LINE 负责后续聊天经营。</p></div>
+            <div class="lead-funnel-head-kpis"><span>总客户 <strong id="leadFunnelTotal">0</strong></span><span>LINE转化 <strong id="leadFunnelRate">0%</strong></span></div>
+          </div>
+          <div id="leadFunnelStageGrid" class="lead-funnel-stage-grid" aria-label="引流漏斗阶段">
+            <div class="dashboard-empty dashboard-empty-wide">暂无引流客户数据</div>
+          </div>
+          <div class="lead-funnel-quick-grid">
+            <article><span>今日新进线</span><strong id="leadFunnelTodayNew">0</strong></article>
+            <article><span>有效聊天+</span><strong id="leadFunnelQualified">0</strong></article>
+            <article><span>准备引导</span><strong id="leadFunnelReady">0</strong></article>
+            <article><span>已邀请LINE</span><strong id="leadFunnelInvited">0</strong></article>
+            <article><span>待回复</span><strong id="leadFunnelWaiting">0</strong></article>
+            <article><span>未分配目标LINE</span><strong id="leadFunnelUnassigned">0</strong></article>
+          </div>
+          <div class="lead-funnel-detail-grid">
+            <section>
+              <div class="lead-funnel-subtitle"><strong>按平台转化</strong><small>点击平台进入对应工作台</small></div>
+              <div id="leadFunnelPlatformList" class="lead-funnel-table"><div class="dashboard-empty">暂无平台数据</div></div>
+            </section>
+            <section>
+              <div class="lead-funnel-subtitle"><strong>按账号转化</strong><small>优先查看 LINE 转化率与待引导人数</small></div>
+              <div id="leadFunnelAccountList" class="lead-funnel-table"><div class="dashboard-empty">暂无账号数据</div></div>
+            </section>
+          </div>
+        </section>
+        <section class="app-dashboard-panel dashboard-account-panel">
+          <div class="dashboard-panel-title"><div><h2>账号运行状态</h2><p>快速发现关闭或异常的账号</p></div><span id="dashboardAccountSummary" class="dashboard-account-summary">0 个账号</span></div>
+          <div id="dashboardAccountStatusList" class="dashboard-account-status-list"></div>
+        </section>
+      </section>
+      <section id="appCenterAppsPane" class="app-center-pane">
+        <div class="app-center-heading">
+          <div><h1>应用中心</h1><p>添加应用后，它会固定显示在左侧导航。每个账号拥有独立 Cookie、LocalStorage、登录状态和代理配置。</p></div>
+          <button id="appCenterRefreshBtn" type="button">刷新状态</button>
+        </div>
+        <div id="appCenterGrid" class="app-center-grid"></div>
+      </section>
+    </div>
+  </section>
+
+  <section id="externalWorkspacePage" class="external-workspace-page hidden" aria-label="应用工作台">
+    <header class="external-workspace-topbar">
+      <div class="external-workspace-row external-workspace-primary-row">
+        <div class="external-workspace-identity">
+          <span id="externalWorkspaceIcon" class="external-workspace-icon">APP</span>
+          <div><div class="external-workspace-title-row"><strong id="externalWorkspaceTitle">应用</strong><span id="externalWorkspaceVersionBadge" class="external-workspace-version-badge">V1.24.0</span><span id="externalBusinessRoleBadge" class="business-role-badge lead" title="非 LINE 平台：接待新线索并自然引导添加 LINE">引流转化</span></div><small id="externalWorkspaceAccountLabel">请选择账号</small></div>
+        </div>
+        <div id="externalWorkspaceModes" class="external-workspace-modes hidden">
+          <button id="externalAggregateModeBtn" type="button">TK聚合模式</button>
+          <button id="externalNativeModeBtn" type="button" class="active">TK模式</button>
+        </div>
+        <div id="externalAggregateQueueControls" class="external-aggregate-queue-controls hidden" aria-label="聚合待回复与轮回">
+          <button id="externalAggregateWaitingBtn" class="external-waiting-center-btn" type="button" title="只显示当前待回复客户">待回复 <span id="externalAggregateWaitingCount">0</span></button>
+          <button id="externalRoundRobinBtn" class="external-round-robin-btn active" type="button" aria-pressed="true" title="轮回回复已开启">轮回 <span id="externalRoundRobinCount">0</span></button>
+          <button id="externalRoundRobinNextBtn" class="external-round-robin-next" type="button" title="打开下一位待回复客户">下一位</button>
+        </div>
+        <button id="externalAddAccountBtn" class="primary" type="button">＋ 新增账号</button>
+        <div id="externalCustomerStats" class="topbar-customer-stats external-customer-stats" aria-label="平台客户统计">
+          <span id="externalCustomerStatsScope" class="customer-stats-scope">当前账号</span>
+          <span>今日新进粉 <strong id="externalTodayNewCount">0</strong></span>
+          <span class="duplicate-stat">重复 <strong id="externalDuplicateCount">0</strong></span>
+          <span id="externalLineConversionStat" class="external-global-stat hidden">LINE转化 <strong id="externalLineConversionRate">0%</strong></span>
+          <span id="externalLineAddedStat" class="external-global-stat hidden">已添加LINE <strong id="externalLineAddedCount">0</strong></span>
+        </div>
+        <button id="externalChatgptStyleBtn" class="gpt-style-top-btn" type="button" title="随时修改 ChatGPT 回复语气和中日双语输出格式">GPT语气</button>
+        <button id="externalChatgptPersonaBtn" class="gpt-style-top-btn" type="button" title="编辑固定人设和长期回复规则；新客户专属 GPT 会话只初始化一次">GPT人设/规则</button>
+        <button id="externalAutomationBtn" class="gpt-style-top-btn automation-top-btn" type="button" title="自动化发送安全底座、队列、防重复和诊断设置">自动化</button>
+        <div class="topbar-spacer"></div>
+        <div id="externalWorkspaceStatus" class="external-workspace-status">准备就绪</div>
+      </div>
+      <div class="external-workspace-row external-workspace-action-row" aria-label="常用工具">
+        <button id="externalBackBtn" class="hidden" type="button" title="返回 Facebook 上一页；没有可返回页面时回到应用中心">← 返回</button>
+        <button id="externalChatHistoryBtn" type="button" title="打开本地聊天记录中心，查看文字、图片、音频历史">聊天记录</button>
+        <button id="externalBulkSendBtn" class="primary" type="button" title="打开多渠道群发中心；当前选择哪个聊天软件，就只读取该软件客户">群发</button>
+        <button id="externalTeamHandoffBtn" type="button" title="把已添加LINE客户跨设备同步给员工承接">团队承接 <span id="externalTeamPendingBadge" class="hidden">0</span></button>
+        <button id="externalHandoffHealthBtn" type="button" title="查看 LINE 承接链路健康、异常原因和局部恢复">链路健康</button>
+        <button id="externalRefreshBtn" type="button">刷新</button>
+        <button id="externalProxyBtn" type="button">代理</button>
+        <button id="externalManageBtn" type="button">管理账号</button>
+        <button id="externalLeadCenterBtn" type="button" title="打开非 LINE 平台的引流漏斗与 LINE 转化数据中心">引流中心</button>
+        <button id="externalWaitingCenterBtn" class="external-waiting-center-btn" type="button" title="进入智能待回复中心：只显示当前需要回复的客户，并显示等待时长、连续来信数和跟进阶段">待回复中心 <span id="externalWaitingCenterCount">0</span></button>
+        <button id="externalConversionDiagBtn" type="button" title="对当前 TikTok 客户运行 LINE 转化链诊断，并把结果复制到剪贴板">转换诊断</button>
+        <button id="externalLineIdSettingsBtn" class="hidden" type="button" title="非 LINE 平台共用的 LINE 设置，只需填写一次">LINE设置</button>
+        <button id="externalTranslationSettingsBtn" type="button" title="所有平台共用的全局翻译设置">翻译设置</button>
+        <button id="externalSpeechLibraryBtn" type="button" title="打开预设话术库并发送到当前客户">话术库</button>
+        <button id="externalChatgptToggleBtn" type="button" title="在 Yoko 主窗口右侧打开真实 ChatGPT 独立网页窗口">打开GPT</button>
+        <button id="externalChatgptInheritBtn" type="button" title="手动选择已有 Facebook 客户并关联同一个 GPT 历史会话">继承FB-GPT</button>
+        <button id="externalChatgptBindBtn" type="button" title="把当前客户绑定到右侧独立 ChatGPT 窗口正在打开的历史对话">绑定GPT</button>
+        <button id="externalChatgptStageBtn" type="button" title="把客户最近连续发来的消息放入绑定的 ChatGPT 输入框；全部消息结尾只留一个“补充：”，先由你检查/补充，再手动发送">客户消息→GPT</button>
+        <button id="externalChatModeBtn" class="chat-mode-toggle hidden" type="button" title="当前客户聊天模式；点击切换接待/精聊">接待模式</button>
+        <button id="externalCrmToolbarToggleBtn" class="hidden" type="button" title="收起客户资料">收起CRM</button>
+      </div>
+    </header>
+    <aside class="external-account-sidebar">
+      <div class="external-account-sidebar-head">
+        <strong id="externalAccountSidebarTitle">账号</strong>
+        <div class="external-account-sidebar-head-actions">
+          <span id="externalAccountSidebarCount">0</span>
+          <button id="externalAccountSidebarToggle" class="external-sidebar-toggle" type="button" title="收起账号栏" aria-label="收起账号栏">◀</button>
+        </div>
+      </div>
+      <div id="externalBulkAccountControls" class="bulk-line-controls external-bulk-account-controls" aria-label="平台全局窗口控制">
+        <button id="externalStartAllBtn" class="bulk-line-btn start" type="button" title="一键启动当前平台全部账号">
+          <span class="bulk-line-icon">▶</span><span class="bulk-line-text">全部启动</span>
+        </button>
+        <button id="externalCloseAllBtn" class="bulk-line-btn stop" type="button" title="一键关闭当前平台全部账号（保留登录状态）">
+          <span class="bulk-line-icon">⏹</span><span class="bulk-line-text">全部关闭</span>
+        </button>
+      </div>
+      <div id="externalAggregateTools" class="external-aggregate-tools hidden">
+        <input id="externalAggregateSearch" type="search" placeholder="搜索客户、消息、@账号…" autocomplete="off" />
+        <select id="externalAggregatePlatformFilter" class="hidden" aria-label="按平台筛选"><option value="">全部平台</option></select>
+        <select id="externalAggregateAccountFilter" aria-label="按账号筛选"><option value="">全部账号</option></select>
+      </div>
+      <div id="externalAccountSidebarList" class="external-account-sidebar-list"></div>
+    </aside>
+    <aside id="externalCrmPanel" class="external-crm-panel hidden" aria-label="平台客户资料">
+      <div class="external-crm-head">
+        <span id="externalCrmAvatar" class="external-crm-avatar"><span>?</span></span>
+        <div class="external-crm-head-copy"><strong id="externalCrmDisplayName">客户资料</strong><small id="externalCrmIdentity">请选择一个 TikTok 对话</small></div>
+        <div class="external-crm-head-actions">
+          <span id="externalCrmHeadState" class="external-crm-head-state">等待选择</span>
+          <button id="externalCrmCollapseBtn" class="external-crm-collapse-btn" type="button" title="收起客户资料" aria-label="收起客户资料">›</button>
+        </div>
+      </div>
+      <div id="externalCrmAutoExtractToast" class="crm-auto-extract-toast" role="status" aria-live="polite"></div>
+      <div class="external-crm-source"><span>来源账号</span><strong id="externalCrmAccount">-</strong></div>
+
+      <div class="external-crm-summary">
+        <strong>客户摘要</strong>
+        <span id="externalCrmSummary">选择客户后立即显示本地资料</span>
+      </div>
+      <div id="externalCrmBusinessHint" class="business-engine-hint lead">
+        <strong>引流转化</strong><span>目标：接待新线索，判断意向，并在合适时机自然引导添加 LINE。</span>
+      </div>
+      <div class="crm-intelligence-strip" aria-label="客户智能识别">
+        <span id="externalCrmLineIntentBadge" class="crm-intelligence-badge neutral">LINE意向：暂无</span>
+        <button id="externalCrmMemoryToggle" class="crm-memory-toggle" type="button">长期记忆 0</button>
+      </div>
+      <div id="externalCrmMemoryPanel" class="crm-memory-panel hidden"><strong>客户长期记忆</strong><div id="externalCrmMemoryList">暂无长期记忆</div></div>
+
+      <div class="external-crm-timeline" aria-label="客户联系轨迹">
+        <div><span>首次联系</span><strong id="externalCrmTimelineFirst">—</strong></div>
+        <div><span>最近来信</span><strong id="externalCrmTimelineIncoming">—</strong></div>
+        <div><span>最近回复</span><strong id="externalCrmTimelineReply">—</strong></div>
+        <div><span>最近打开</span><strong id="externalCrmTimelineOpened">—</strong></div>
+      </div>
+
+      <label>姓名<input id="externalCrmName" placeholder="客户姓名 / 你的备注姓名" /></label>
+      <div class="external-crm-grid">
+        <label>地区<input id="externalCrmRegion" placeholder="东京 / 大阪 / 福冈" /></label>
+        <label>年龄<input id="externalCrmAge" placeholder="52" inputmode="numeric" /></label>
+      </div>
+      <label>工作<input id="externalCrmOccupation" placeholder="制造业 / 农业 / 自营业" /></label>
+      <label>兴趣爱好<input id="externalCrmInterests" placeholder="温泉、旅行、高尔夫、美食" /></label>
+      <label>标签<input id="externalCrmTags" placeholder="重点客户、周末联系、已语音" /></label>
+      <label>备注<textarea id="externalCrmNote" rows="7" placeholder="记录聊天重点、家庭、工作、下次切入点……"></textarea></label>
+      <label>处理状态
+        <select id="externalCrmServiceStatus">
+          <option value="auto">自动判断</option><option value="waiting">待回复</option><option value="active">跟进中</option><option value="done">已完成</option><option value="paused">暂停</option><option value="blacklist">黑名单</option>
+        </select>
+      </label>
+      <label>跟进阶段
+        <select id="externalCrmStage">
+          <option value="新进线">新进线</option><option value="已接待">已接待</option><option value="有效聊天">有效聊天</option><option value="准备引导LINE">准备引导LINE</option><option value="已邀请LINE">已邀请LINE</option><option value="LINE已添加">LINE已添加</option><option value="无效/暂停">无效/暂停</option>
+        </select>
+      </label>
+      <label id="externalCrmTargetLineWrap" class="external-crm-target-line hidden">计划引导到哪个 LINE
+        <select id="externalCrmTargetLine"><option value="">请选择 LINE ID</option></select>
+      </label>
+      <div class="external-crm-actions-row">
+        <button id="externalCrmExtractBtn" type="button">提取客户资料</button>
+        <button id="externalCrmSaveBtn" class="primary" type="button">立即保存</button>
+      </div>
+      <div id="externalCrmExtractWrap" class="external-crm-extract-wrap hidden">
+        <textarea id="externalCrmExtractPreview" rows="9" readonly aria-label="提取的客户资料文本"></textarea>
+        <small id="externalCrmExtractStatus">已生成文本，可直接复制使用</small>
+      </div>
+      <small id="externalCrmSaveStatus" class="external-crm-save-status">选择当前 TikTok 客户后编辑</small>
+    </aside>
+    <div id="externalViewPlaceholder" class="external-view-placeholder"><div><strong>正在打开应用…</strong><span>网页工作区会显示在这里</span></div></div>
+  </section>
+
+  <section id="nativeApiPage" class="native-api-page hidden" aria-label="官方 API 收件箱">
+    <header class="native-api-toolbar">
+      <div class="native-api-title"><span class="native-api-logo">API</span><div><strong>Facebook 官方 API 收件箱</strong><small>Facebook Messenger · 不依赖网页 DOM</small></div></div>
+      <div class="native-api-health"><span id="nativeApiMetaHealth" class="native-api-health-chip">Facebook · 检查中</span><span id="nativeApiLineHealth" class="native-api-health-chip">LINE · 检查中</span></div>
+      <div class="native-api-toolbar-actions" aria-label="官方 API 工具栏">
+        <div class="native-api-toolbar-row native-api-toolbar-row-primary">
+          <button id="nativeApiMasterToggleBtn" class="native-api-master-toggle on" type="button" aria-pressed="true" title="关闭后停止 Facebook/LINE 官方 API 拉取、轮询和官方 API 发送；原生网页登录与本地数据不受影响">API：开</button>
+          <button id="nativeApiFbPagesBtn" type="button" title="管理多个 Facebook Page Access Token；Token 只保存在 VPS">FB账号</button>
+          <button id="nativeApiAutoReplyBtn" type="button" title="设置每个 Facebook 主页的首次消息自动回复">自动回复</button>
+          <button id="nativeApiDiagnosticsBtn" class="native-api-diagnostics-btn pending" type="button" title="查看 Facebook Webhook、自动补漏、SQLite、LINE、翻译队列和 GPT 健康状态"><span class="native-api-diagnostics-dot"></span><span id="nativeApiDiagnosticsText">系统检查中</span></button>
+          <button id="nativeApiBulkBtn" class="primary" type="button" title="从现有客户列表勾选客户，按随机时间间隔逐个发送">群发</button>
+          <button id="nativeApiRefreshBtn" type="button">刷新</button>
+          <button id="nativeApiHistorySyncBtn" type="button" title="从 Meta 官方 Conversations API 回填已有 Facebook 客户">同步FB历史</button>
+          <button id="nativeApiNotificationBtn" type="button" title="控制官方 API 新消息桌面通知和提示音">通知：开</button>
+        </div>
+        <div class="native-api-toolbar-row native-api-toolbar-row-secondary">
+          <button id="nativeApiTranslationBtn" type="button">翻译设置</button>
+          <button id="nativeApiSpeechBtn" type="button">话术库</button>
+          <button id="nativeApiChatHistoryBtn" type="button">聊天记录</button>
+          <button id="nativeApiChatgptPersonaBtn" type="button" title="编辑固定人设和长期回复规则；Facebook/LINE 官方 API 与其他工作台共用同一份设置">GPT人设/规则</button>
+          <button id="nativeApiGptToggleBtn" type="button">打开GPT</button>
+          <button id="nativeApiGptBindBtn" type="button">绑定GPT</button>
+          <button id="nativeApiGptStageBtn" class="primary" type="button">客户消息→GPT</button>
+          <button id="nativeApiChatModeBtn" class="chat-mode-toggle hidden" type="button" title="当前客户聊天模式；点击切换接待/精聊">接待模式</button>
+        </div>
+      </div>
+      <span id="nativeApiStatus" class="native-api-status">准备连接官方 API</span>
+    </header>
+    <div class="native-api-shell">
+      <aside class="native-api-customers">
+        <div class="native-api-customer-head"><div class="native-api-customer-total"><strong>客户</strong><small id="nativeApiCustomerCount">0 位</small></div><div id="nativeApiTodayNewStat" class="native-api-today-new-stat" title="今天第一次给我们发私信，且历史记录中没有更早私信的客户"><span>今日新进</span><strong id="nativeApiTodayNewCount">0</strong></div><div class="native-api-customer-head-actions"><button id="nativeApiWaitingOnlyBtn" type="button" aria-pressed="false">待回复 0</button><button id="nativeApiClearUnreadBtn" type="button" title="清除官方 API 未读提醒">清未读</button></div></div>
+        <div class="native-api-filters" role="tablist">
+          <button class="active" type="button" data-native-api-filter="all">全部</button>
+          <button type="button" data-native-api-filter="facebook">Facebook</button>
+          <button type="button" data-native-api-filter="line">LINE</button>
+        </div>
+        <div class="native-api-page-filter-row"><span>收件箱</span><select id="nativeApiInboxSelector"><option value="all">全部收件箱（汇总）</option></select><button id="nativeApiInboxManageBtn" type="button">管理</button><small id="nativeApiInboxScopeCount"></small></div>
+        <div class="native-api-page-filter-row"><span>FB主页</span><select id="nativeApiFacebookPageFilter"><option value="all">全部 Facebook Page</option></select></div>
+        <div class="native-api-stage-groups" aria-label="按跟进阶段分组筛选">
+          <button type="button" data-native-api-stage-group="new" title="新进线 / 已接待；再次点击取消分组">新进线 <span>0</span></button>
+          <button type="button" data-native-api-stage-group="active" title="有效聊天 / 准备引导LINE；再次点击取消分组">有效聊天 <span>0</span></button>
+          <button type="button" data-native-api-stage-group="invited" title="已邀请LINE；再次点击取消分组">已邀请LINE <span>0</span></button>
+          <button type="button" data-native-api-stage-group="added" title="LINE已添加 / 已添加LINE；再次点击取消分组">已添加LINE <span>0</span></button>
+          <button type="button" data-native-api-stage-group="paused" title="无效 / 暂停；再次点击取消分组">无效/暂停 <span>0</span></button>
+        </div>
+        <div class="native-api-day-filter-row">
+          <span>客户天数</span>
+          <select id="nativeApiDayFilter" aria-label="按客户首次来信后的第1天到第10天筛选">
+            <option value="0">全部天数</option>
+            <option value="1">第1天</option><option value="2">第2天</option><option value="3">第3天</option><option value="4">第4天</option><option value="5">第5天</option>
+            <option value="6">第6天</option><option value="7">第7天</option><option value="8">第8天</option><option value="9">第9天</option><option value="10">第10天+</option>
+          </select>
+          <small id="nativeApiDayFilterStatus">按首次来信计算 · 日本时间 05:00 换日</small>
+        </div>
+        <input id="nativeApiSearch" class="native-api-search" type="search" placeholder="搜索姓名 / 阶段 / 最近消息…" autocomplete="off" />
+        <div id="nativeApiCustomerList" class="native-api-customer-list"><div class="native-api-empty">正在读取客户…</div></div>
+      </aside>
+      <main class="native-api-chat">
+        <header class="native-api-chat-head">
+          <span id="nativeApiChatAvatar" class="native-api-avatar large"><span>?</span></span>
+          <div class="native-api-chat-identity"><div class="native-api-chat-name-row"><strong id="nativeApiChatName">请选择客户</strong><select id="nativeApiCustomerDayBadge" class="native-api-customer-day-badge hidden" title="按首次来信计算 · 日本时间 05:00 换日；也可手动校准当前第几天"><option value="">--</option></select></div><small id="nativeApiChatMeta">Facebook 官方 API 客户会显示在这里</small></div>
+          <span id="nativeApiChatState" class="native-api-chat-state">未选择</span>
+        </header>
+        <div id="nativeApiMessages" class="native-api-messages"><div class="native-api-chat-placeholder"><strong>Facebook 官方 API 原生聊天</strong><span>选择左侧客户后直接读取 VPS SQLite 历史，不再切换 Meta Business 网页。</span></div></div>
+        <div class="native-api-composer">
+          <div id="nativeApiChatScriptDraft" class="native-api-chatscript-draft hidden">
+            <div class="native-api-chatscript-draft-head"><div><strong>Chat Script AI 草稿</strong><span id="nativeApiChatScriptMeta">等待生成</span></div><button id="nativeApiChatScriptCloseBtn" type="button" title="收起草稿">×</button></div>
+            <div class="native-api-chatscript-draft-grid">
+              <label><span>日语可发送正文</span><textarea id="nativeApiChatScriptJa" rows="4" readonly></textarea></label>
+              <label><span>中文对照</span><textarea id="nativeApiChatScriptZh" rows="4" readonly></textarea></label>
+            </div>
+            <div class="native-api-chatscript-draft-actions">
+              <button id="nativeApiChatScriptCopyBtn" type="button">复制日语</button>
+              <button id="nativeApiChatScriptApplyBtn" class="primary" type="button">写入输入框</button>
+              <button id="nativeApiChatScriptEffectiveBtn" type="button">👍 有效</button>
+              <button id="nativeApiChatScriptRejectBtn" type="button">不合适</button>
+            </div>
+          </div>
+          <textarea id="nativeApiComposer" rows="3" maxlength="12000" placeholder="输入回复…  Enter 发送 · Shift+Enter 换行"></textarea>
+          <input id="nativeApiImageInput" type="file" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" multiple hidden />
+          <div class="native-api-composer-foot"><small id="nativeApiComposerHint">Enter 发送 · Shift+Enter 换行；Ctrl+V 粘贴图片先预览再发送；平台 Token 不会进入桌面端。</small><button id="nativeApiImageBtn" class="native-api-image-btn" type="button">附件</button><button id="nativeApiSendBtn" class="primary" type="button">发送</button></div>
+        </div>
+      </main>
+      <aside class="native-api-crm">
+        <div class="native-api-crm-head"><div><strong>客户资料</strong><small id="nativeApiCrmIdentity">选择客户后读取本机 CRM</small></div><span id="nativeApiCrmSaveState">等待选择</span></div>
+        <div class="native-api-crm-body">
+          <label>处理状态<select id="nativeApiCrmServiceStatus"><option value="auto">自动判断</option><option value="waiting">待回复</option><option value="active">跟进中</option><option value="done">已完成</option><option value="paused">暂停</option><option value="blacklist">黑名单</option></select></label>
+          <label>跟进阶段<select id="nativeApiCrmStage"></select></label>
+          <label>姓名<input id="nativeApiCrmName" placeholder="客户姓名 / 备注姓名" /></label>
+          <div class="native-api-crm-two"><label>地区<input id="nativeApiCrmRegion" placeholder="东京 / 大阪" /></label><label>年龄<input id="nativeApiCrmAge" inputmode="numeric" placeholder="52" /></label></div>
+          <label>工作<input id="nativeApiCrmOccupation" placeholder="职业 / 行业" /></label>
+          <label>兴趣 / 关键词<input id="nativeApiCrmInterests" placeholder="旅行、高尔夫、美食" /></label>
+          <label>标签<input id="nativeApiCrmTags" placeholder="重点客户、待跟进" /></label>
+          <label>备注<textarea id="nativeApiCrmNote" rows="7" placeholder="聊天重点、家庭、工作、下次切入点…"></textarea></label>
+        </div>
+        <div class="native-api-crm-foot"><small>API 身份稳定绑定 CRM，重启不会换客户</small><button id="nativeApiCrmSaveBtn" class="primary" type="button">立即保存</button></div>
+      </aside>
+    </div>
+  </section>
+
+  <aside class="leftbar">
+    <div class="left-title">
+      <span class="left-title-label">Line</span>
+      <div class="left-title-actions">
+        <span class="count" id="accountCount">0</span>
+        <button id="accountSidebarToggle" class="sidebar-toggle" type="button" title="收起账号栏" aria-label="收起账号栏">◀</button>
+      </div>
+    </div>
+    <div class="bulk-line-controls" aria-label="LINE 全局窗口控制">
+      <button id="startAllLineBtn" class="bulk-line-btn start" type="button" title="一键启动全部 LINE">
+        <span class="bulk-line-icon">▶</span><span class="bulk-line-text">全部启动</span>
+      </button>
+      <button id="closeAllLineBtn" class="bulk-line-btn stop" type="button" title="一键关闭全部 LINE（保留登录状态）">
+        <span class="bulk-line-icon">⏹</span><span class="bulk-line-text">全部关闭</span>
+      </button>
+      <button id="lineBulkSendBtn" class="bulk-line-btn" type="button" title="打开群发中心并读取 LINE 客户列表">
+        <span class="bulk-line-icon">✉</span><span class="bulk-line-text">群发</span>
+      </button>
+    </div>
+    <div id="accounts" class="accounts"></div>
+
+    <section id="aggregateCustomerSidebar" class="aggregate-customer-sidebar" aria-label="聚合客户会话">
+      <div class="aggregate-customer-head">
+        <div class="aggregate-customer-title">
+          <strong>客户会话</strong>
+          <span id="aggregateCustomerSummary">共 0 位 · 未读 0</span>
+        </div>
+        <div class="aggregate-customer-head-actions">
+          <button id="aggregateRoundRobinBtn" class="aggregate-round-robin-btn active" type="button" aria-pressed="true" title="轮回回复已开启">轮回 0</button>
+          <button id="aggregateRoundRobinNextBtn" class="aggregate-round-robin-next" type="button" title="打开下一位待回复客户（Tab 下一位 / Ctrl+Tab 上一位）" aria-label="打开下一位待回复客户">下一位</button>
+          <button id="aggregateCustomerRestoreHiddenBtn" class="aggregate-customer-restore hidden" type="button" title="恢复已删除会话">已删除</button>
+          <button id="aggregateCustomerRefreshBtn" class="aggregate-customer-refresh" type="button" title="刷新全部客户会话" aria-label="刷新全部客户会话">↻</button>
+        </div>
+      </div>
+      <div class="aggregate-customer-filter" role="tablist" aria-label="客户会话筛选">
+        <button id="aggregateCustomerFilterAll" class="aggregate-customer-filter-btn active" type="button" data-filter="all" role="tab" aria-selected="true">全部 <span id="aggregateCustomerAllCount">0</span></button>
+        <button id="aggregateCustomerFilterUnread" class="aggregate-customer-filter-btn" type="button" data-filter="unread" role="tab" aria-selected="false">未读 <span id="aggregateCustomerUnreadCount">0</span></button>
+        <button id="aggregateCustomerFilterRead" class="aggregate-customer-filter-btn" type="button" data-filter="read" role="tab" aria-selected="false">已读 <span id="aggregateCustomerReadCount">0</span></button>
+      </div>
+      <div id="aggregateLineLifecycleGroups" class="aggregate-line-lifecycle-groups" aria-label="按 LINE 客户天数分组">
+        <button class="active" type="button" data-line-lifecycle-group="all">全部 <span>0</span></button>
+        <button type="button" data-line-lifecycle-group="new">新客户 <span>0</span></button>
+        <button type="button" data-line-lifecycle-group="day1">第1天 <span>0</span></button>
+        <button type="button" data-line-lifecycle-group="day2">第2天 <span>0</span></button>
+        <button type="button" data-line-lifecycle-group="day3">第3天 <span>0</span></button>
+        <button type="button" data-line-lifecycle-group="day4">第4天 <span>0</span></button>
+        <button type="button" data-line-lifecycle-group="day5">第5天 <span>0</span></button>
+        <button type="button" data-line-lifecycle-group="day6">第6天 <span>0</span></button>
+        <button type="button" data-line-lifecycle-group="day7">第7天 <span>0</span></button>
+        <button type="button" data-line-lifecycle-group="day8">第8天 <span>0</span></button>
+        <button type="button" data-line-lifecycle-group="day9">第9天 <span>0</span></button>
+        <button type="button" data-line-lifecycle-group="day10">第10天+ <span>0</span></button>
+      </div>
+      <div class="aggregate-customer-search">
+        <input id="aggregateCustomerSearch" type="search" placeholder="全局搜索：姓名 / LINE ID / 地区 / 职业 / 备注 / 最近消息…" autocomplete="off" />
+      </div>
+      <div class="aggregate-smart-controls" aria-label="聚合客户快捷控制">
+        <select id="aggregateCustomerAccountFilter" aria-label="按 LINE 账号筛选">
+          <option value="">全部账号</option>
+        </select>
+        <select id="aggregateRecentCustomerSelect" aria-label="最近访问客户">
+          <option value="">最近10位</option>
+        </select>
+        <button id="aggregateNotificationBtn" type="button" title="消息中心">消息 <span id="aggregateNotificationBadge" class="aggregate-notification-badge hidden">0</span></button>
+      </div>
+      <div id="aggregateAccountStats" class="aggregate-account-stats" aria-label="LINE 账号客服统计"></div>
+      <div id="aggregateOpsSummary" class="aggregate-ops-summary" aria-label="客服运营概览">
+        <span><strong id="aggregateOpsWaiting">0</strong><small>待回复</small></span>
+        <span><strong id="aggregateOpsActive">0</strong><small>跟进中</small></span>
+        <span><strong id="aggregateOpsDone">0</strong><small>已完成</small></span>
+        <span><strong id="aggregateOpsWait">0m</strong><small>平均等待</small></span>
+      </div>
+      <div id="aggregateCustomerList" class="aggregate-customer-list">
+        <div class="aggregate-customer-empty">正在读取所有 LINE 会话…</div>
+      </div>
+    </section>
+  </aside>
+
+  <aside id="aggregateCrmPanel" class="aggregate-crm-panel" aria-label="实时客户资料">
+    <div class="aggregate-crm-panel-head">
+      <div class="aggregate-crm-panel-identity">
+        <span id="crmSideAvatar" class="aggregate-crm-panel-avatar"><span>?</span></span>
+        <div>
+          <strong id="crmSideTitle">客户资料</strong>
+          <span id="crmSideMeta">请选择一个 LINE 对话</span>
+        </div>
+      </div>
+      <div class="aggregate-crm-panel-head-actions">
+        <span id="crmSideSaveState" class="aggregate-crm-save-state">等待选择</span>
+        <button id="crmSideCollapseBtn" class="aggregate-crm-collapse-btn" type="button" title="收起客户资料" aria-label="收起客户资料">›</button>
+      </div>
+    </div>
+
+    <div class="aggregate-crm-panel-body">
+      <input type="hidden" id="crmSideAccountId" />
+      <input type="hidden" id="crmSideChatId" />
+      <input type="hidden" id="crmSideDisplayName" />
+
+      <div id="crmSideAutoExtractToast" class="crm-auto-extract-toast" role="status" aria-live="polite"></div>
+      <div id="crmSideQuickSummary" class="aggregate-crm-quick-summary">
+        <strong>客户摘要</strong>
+        <span id="crmSideQuickSummaryText">选择客户后立即显示本地资料</span>
+      </div>
+      <div id="crmSideBusinessHint" class="business-engine-hint relationship">
+        <strong>聊天经营</strong><span>目标：保持上下文连续，长期维护关系，并让重要客户优先人工接管。</span>
+      </div>
+      <div id="crmSideCrossPlatformSource" class="crm-cross-platform-source hidden"><strong>跨平台承接</strong><span id="crmSideCrossPlatformText"></span></div>
+      <div class="crm-intelligence-strip line-memory-strip" aria-label="客户长期记忆">
+        <button id="crmSideMemoryToggle" class="crm-memory-toggle" type="button">长期记忆 0</button>
+      </div>
+      <div id="crmSideMemoryPanel" class="crm-memory-panel hidden"><strong>客户长期记忆</strong><div id="crmSideMemoryList">暂无长期记忆</div></div>
+
+      <div class="aggregate-crm-timeline" aria-label="客户联系轨迹">
+        <div><span>首次联系</span><strong id="crmTimelineFirst">—</strong></div>
+        <div><span>最近来信</span><strong id="crmTimelineIncoming">—</strong></div>
+        <div><span>最近回复</span><strong id="crmTimelineReply">—</strong></div>
+        <div><span>最近打开</span><strong id="crmTimelineOpened">—</strong></div>
+      </div>
+
+      <label class="aggregate-crm-field">处理状态
+        <select id="crmSideServiceStatus">
+          <option value="auto">自动判断</option>
+          <option value="waiting">待回复</option>
+          <option value="active">跟进中</option>
+          <option value="done">已完成</option>
+          <option value="paused">暂停</option>
+          <option value="blacklist">黑名单</option>
+        </select>
+      </label>
+
+      <label class="aggregate-crm-field">跟进阶段
+        <select id="crmSideStage">
+          <option value="初步认识">初步认识</option>
+          <option value="熟悉互动">熟悉互动</option>
+          <option value="信任建立">信任建立</option>
+          <option value="重点跟进">重点跟进</option>
+          <option value="长期维护">长期维护</option>
+          <option value="暂缓">暂缓</option>
+        </select>
+      </label>
+
+      <label class="aggregate-crm-field">姓名
+        <input id="crmSideName" placeholder="客户姓名 / 你的备注姓名" />
+      </label>
+
+      <div class="aggregate-crm-two">
+        <label class="aggregate-crm-field">地区
+          <input id="crmSideRegion" placeholder="东京 / 大阪 / 福冈" />
+        </label>
+        <label class="aggregate-crm-field">年龄
+          <input id="crmSideAge" placeholder="52" inputmode="numeric" />
+        </label>
+      </div>
+
+      <label class="aggregate-crm-field">兴趣 / 关键词
+        <input id="crmSideInterests" placeholder="温泉、旅行、高尔夫、美食" />
+      </label>
+
+      <label class="aggregate-crm-field">工作
+        <input id="crmSideOccupation" placeholder="制造业 / 农业 / 自营业" />
+      </label>
+
+
+      <label class="aggregate-crm-field">标签
+        <input id="crmSideTags" placeholder="重点客户、周末联系、已语音" />
+      </label>
+
+      <label class="aggregate-crm-field aggregate-crm-note">备注
+        <textarea id="crmSideNote" rows="8" placeholder="记录聊天重点、家庭、工作、下次切入点……"></textarea>
+      </label>
+    </div>
+
+    <div class="aggregate-crm-panel-foot">
+      <span>修改后自动保存到本机</span>
+      <button id="crmSideSaveBtn" class="primary" type="button">立即保存</button>
+    </div>
+  </aside>
+  <button id="crmSideEdgeToggleBtn" class="aggregate-crm-edge-toggle" type="button" title="收起客户资料" aria-label="收起客户资料" aria-expanded="true">›</button>
+
+  <main class="view-placeholder">
+    <div class="placeholder" id="emptyHint">
+      <div class="bubble">💬</div>
+      <strong>选择或重新打开一个 LINE</strong>
+      <span>关闭窗口不会删除账号，也不会清除登录状态</span>
+    </div>
+  </main>
+
+  <main class="aggregate-view hidden" id="aggregateView">
+    <section class="aggregate-shell">
+      <div class="aggregate-head">
+        <div>
+          <h2>聚合收件箱</h2>
+          <p>统一查看所有个人 LINE 的最近会话。关闭的账号保留最后一次本地快照，不会自动启动。</p>
+        </div>
+        <div class="aggregate-summary" id="aggregateSummary">0 个会话 · 0 条未读</div>
+      </div>
+
+      <div class="aggregate-toolbar">
+        <input id="aggregateSearch" type="search" placeholder="搜索联系人、消息、账号…" autocomplete="off" />
+        <select id="aggregateAccountFilter" aria-label="按 LINE 账号筛选">
+          <option value="">全部账号</option>
+        </select>
+        <button id="aggregateUnreadOnlyBtn" class="aggregate-filter-btn" type="button" aria-pressed="false">只看未读</button>
+        <button id="aggregateRefreshBtn" type="button">刷新聚合</button>
+      </div>
+
+      <div class="aggregate-account-strip" id="aggregateAccountStrip"></div>
+      <div class="aggregate-list" id="aggregateList">
+        <div class="aggregate-empty">正在读取 LINE 会话…</div>
+      </div>
+    </section>
+  </main>
+
+  <section id="aggregateReplyDock" class="aggregate-reply-dock" aria-label="聚合回复与翻译">
+    <div class="aggregate-reply-head">
+      <div class="aggregate-reply-contact">
+        <span id="aggregateReplyAvatar" class="aggregate-reply-avatar"><span>?</span></span>
+        <div class="aggregate-reply-contact-text">
+          <strong id="aggregateReplyName">请选择左侧客户</strong>
+          <span id="aggregateReplyMeta">选择客户后，可直接翻译并从对应 LINE 账号发送</span>
+        </div>
+      </div>
+      <div class="aggregate-reply-language">
+        <select id="aggregateReplySourceLang" aria-label="原文语言">
+          <option value="zh" selected>中文</option>
+          <option value="auto">自动识别</option>
+          <option value="ja">日文</option>
+          <option value="en">English</option>
+        </select>
+        <span>→</span>
+        <select id="aggregateReplyTargetLang" aria-label="目标语言">
+          <option value="ja" selected>日文</option>
+          <option value="zh">中文</option>
+          <option value="en">English</option>
+        </select>
+        <button id="aggregateTranslateLatestBtn" type="button" title="把当前客户最近一条收到的消息翻译成中文">译最新→中文</button>
+      </div>
+    </div>
+
+    <div id="aggregateLatestTranslation" class="aggregate-latest-translation hidden">
+      <span id="aggregateLatestOriginal"></span>
+      <strong id="aggregateLatestTranslated"></strong>
+    </div>
+
+    <div class="aggregate-reply-body">
+      <label class="aggregate-reply-field">
+        <span>原文</span>
+        <textarea id="aggregateReplySource" rows="2" placeholder="输入中文内容…"></textarea>
+      </label>
+      <button id="aggregateReplyTranslateBtn" class="aggregate-reply-translate" type="button">翻译 →</button>
+      <label class="aggregate-reply-field translated">
+        <span>发送预览（可修改）</span>
+        <textarea id="aggregateReplyTranslated" rows="2" placeholder="翻译结果会显示在这里，也可以直接输入日文…"></textarea>
+      </label>
+    </div>
+
+    <div class="aggregate-reply-foot">
+      <span id="aggregateReplyStatus">请选择客户</span>
+      <div class="aggregate-reply-actions">
+        <button id="aggregateReplySendOriginalBtn" type="button">发送原文</button>
+        <button id="aggregateReplyTranslateSendBtn" type="button">翻译并发送</button>
+        <button id="aggregateReplySendBtn" class="primary" type="button">发送预览</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="modal hidden" id="lineFlowSettingsModal">
+    <div class="modal-card line-flow-settings-card">
+      <div class="modal-head">
+        <div><h3>流程设置</h3><p class="app-account-modal-meta">这里维护 LINE 客户的跟进阶段。右侧 CRM 和“客户资料”里的跟进阶段下拉框会实时使用这套顺序。</p></div>
+        <button class="close" data-close="lineFlowSettingsModal">×</button>
+      </div>
+      <div class="line-flow-create-row">
+        <label>阶段名称<input id="lineFlowStageInput" placeholder="例如：新客户 / 沟通了解中 / 已加LINE" autocomplete="off" /></label>
+        <button id="lineFlowStageAddBtn" class="primary" type="button">＋ 添加阶段</button>
+      </div>
+      <div class="line-flow-hint">可用 ↑ / ↓ 调整顺序。保存后 LINE CRM 的“跟进阶段”下拉框会立即按这里的顺序更新。</div>
+      <div id="lineFlowStageList" class="line-flow-settings-list"></div>
+      <div class="modal-actions line-flow-modal-actions">
+        <button id="lineFlowResetBtn" type="button">恢复默认</button>
+        <button data-close="lineFlowSettingsModal">完成</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal hidden" id="lineFlowConfirmModal">
+    <div class="modal-card line-flow-confirm-card" role="dialog" aria-modal="true" aria-labelledby="lineFlowConfirmTitle">
+      <div class="modal-head">
+        <div><h3 id="lineFlowConfirmTitle">请确认</h3></div>
+        <button id="lineFlowConfirmCloseBtn" class="close" type="button" aria-label="取消">×</button>
+      </div>
+      <div id="lineFlowConfirmMessage" class="line-flow-confirm-message"></div>
+      <div id="lineFlowConfirmDetail" class="line-flow-confirm-detail"></div>
+      <div class="modal-actions">
+        <button id="lineFlowConfirmCancelBtn" type="button">取消</button>
+        <button id="lineFlowConfirmOkBtn" class="danger" type="button">确定</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal hidden" id="lineIdSettingsModal">
+    <div class="modal-card line-id-settings-card">
+      <div class="modal-head">
+        <div><h3>全局 LINE 设置</h3><p class="app-account-modal-meta">这里只需填写一次。TikTok、Facebook、Instagram、WhatsApp、Telegram、Meta Business 等非 LINE 平台都会共用这些 LINE ID。</p></div>
+        <button class="close" data-close="lineIdSettingsModal">×</button>
+      </div>
+      <div class="line-id-create-row">
+        <label>LINE ID<input id="lineIdValueInput" placeholder="例如：@194xkvdz / yoko_line01" autocomplete="off" /></label>
+        <label>备注（可选）<input id="lineIdRemarkInput" placeholder="例如：日本-01 / 广告线A" autocomplete="off" /></label>
+        <button id="lineIdAddBtn" class="primary" type="button">＋ 添加 LINE ID</button>
+      </div>
+      <div class="line-id-hint">保存后会立即出现在右侧 CRM 的 LINE 下拉框中。这里仅保存分流用的 LINE ID，不会影响 LINE 登录账号。</div>
+      <div id="lineIdSettingsList" class="line-id-settings-list"></div>
+      <div class="modal-actions"><button data-close="lineIdSettingsModal">完成</button></div>
+    </div>
+  </div>
+
+  <div class="modal hidden" id="appAccountModal">
+    <div class="modal-card app-account-card">
+      <div class="modal-head">
+        <div><h3 id="appAccountModalTitle">应用账号</h3><p id="appAccountModalMeta" class="app-account-modal-meta">独立登录环境</p></div>
+        <button class="close" data-close="appAccountModal">×</button>
+      </div>
+      <div class="app-account-create-row">
+        <input id="appAccountNewName" placeholder="留空则自动编号，例如 FB-1" />
+        <button id="appAccountAddBtn" class="primary" type="button">＋ 新增账号</button>
+      </div>
+      <div id="appAccountList" class="app-account-list"></div>
+      <p class="hint">每个账号都使用独立 Chromium Profile。删除账号只删除 Yoko 中的账号入口；本版本默认保留本机 Profile，避免误删登录数据。</p>
+    </div>
+  </div>
+
+  <div class="modal hidden" id="appProxyModal">
+    <div class="modal-card proxy-only-card">
+      <div class="modal-head">
+        <div><h3 id="appProxyModalTitle">应用账号代理</h3><p id="appProxyAccountLabel" class="app-account-modal-meta">请选择账号</p></div>
+        <button class="close" data-close="appProxyModal">×</button>
+      </div>
+      <div class="check-row"><input type="checkbox" id="appProxyEnabled" /><label for="appProxyEnabled">启用独立代理</label></div>
+      <div class="proxy-grid">
+        <label>协议<select id="appProxyProtocol"><option value="socks5">SOCKS5</option><option value="socks4">SOCKS4</option><option value="http">HTTP</option><option value="https">HTTPS</option></select></label>
+        <label>IP / Host<input id="appProxyHost" placeholder="127.0.0.1" /></label>
+        <label>端口<input id="appProxyPort" type="number" min="0" max="65535" placeholder="1080" /></label>
+      </div>
+      <div class="check-row"><input type="checkbox" id="appProxyAuth" /><label for="appProxyAuth">代理需要用户名/密码</label></div>
+      <div class="proxy-grid">
+        <label>用户名<input id="appProxyUsername" /></label>
+        <label>密码<input id="appProxyPassword" type="password" /></label>
+      </div>
+      <div class="proxy-test-panel"><button id="testAppProxyBtn" type="button">测试延迟</button><div id="appProxyTestResult" class="proxy-test-result">最近测速：未测试</div></div>
+      <p class="hint">只作用于当前应用账号。账号之间代理、Cookie、LocalStorage 和登录状态完全独立；保存后当前网页会重新建立连接。</p>
+      <div class="modal-actions"><button data-close="appProxyModal">取消</button><button id="saveAppProxyBtn" class="primary" type="button">保存代理</button></div>
+    </div>
+  </div>
+
+  <div class="modal hidden" id="accountModal">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3 id="accountModalTitle">新增个人 LINE</h3>
+        <button class="close" data-close="accountModal">×</button>
+      </div>
+
+      <input type="hidden" id="editAccountId" />
+
+      <label>账号名称
+        <input id="accountName" placeholder="LINE-01" />
+      </label>
+
+      <label>备注
+        <input id="accountRemark" placeholder="例如：日本客户号" />
+      </label>
+
+      <div class="check-row">
+        <input type="checkbox" id="proxyEnabled" />
+        <label for="proxyEnabled">启用独立代理</label>
+      </div>
+
+      <div class="proxy-grid">
+        <label>协议
+          <select id="proxyProtocol">
+            <option value="socks5">SOCKS5</option>
+            <option value="socks4">SOCKS4</option>
+            <option value="http">HTTP</option>
+            <option value="https">HTTPS</option>
+          </select>
+        </label>
+
+        <label>IP / Host
+          <input id="proxyHost" placeholder="127.0.0.1" />
+        </label>
+
+        <label>端口
+          <input id="proxyPort" type="number" min="0" max="65535" placeholder="1080" />
+        </label>
+      </div>
+
+      <div class="check-row">
+        <input type="checkbox" id="proxyAuth" />
+        <label for="proxyAuth">代理需要用户名/密码</label>
+      </div>
+
+      <div class="proxy-grid">
+        <label>用户名
+          <input id="proxyUsername" />
+        </label>
+        <label>密码
+          <input id="proxyPassword" type="password" />
+        </label>
+      </div>
+
+      <div class="proxy-test-panel account-form-proxy-test">
+        <button id="testAccountFormProxyBtn" type="button">测试代理</button>
+        <div id="accountFormProxyTestResult" class="proxy-test-result">填写代理后可先测试；测试不会保存账号。</div>
+      </div>
+
+      <p class="hint">
+        “测试代理”只使用当前填写的协议、IP、端口和认证信息临时测速，不会创建账号或修改现有配置。
+      </p>
+
+      <div class="modal-actions">
+        <button data-close="accountModal">取消</button>
+        <button id="saveAccountBtn" class="primary">保存并打开</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal hidden" id="proxyModal">
+    <div class="modal-card proxy-only-card">
+      <div class="modal-head">
+        <h3>当前账号代理</h3>
+        <button class="close" data-close="proxyModal">×</button>
+      </div>
+
+      <div class="proxy-account-summary" id="proxyAccountLabel">请选择一个 LINE 账号</div>
+
+      <div class="check-row">
+        <input type="checkbox" id="activeProxyEnabled" />
+        <label for="activeProxyEnabled">启用独立代理</label>
+      </div>
+
+      <div class="proxy-grid">
+        <label>协议
+          <select id="activeProxyProtocol">
+            <option value="socks5">SOCKS5</option>
+            <option value="socks4">SOCKS4</option>
+            <option value="http">HTTP</option>
+            <option value="https">HTTPS</option>
+          </select>
+        </label>
+        <label>IP / Host
+          <input id="activeProxyHost" placeholder="127.0.0.1" />
+        </label>
+        <label>端口
+          <input id="activeProxyPort" type="number" min="0" max="65535" placeholder="1080" />
+        </label>
+      </div>
+
+      <div class="check-row">
+        <input type="checkbox" id="activeProxyAuth" />
+        <label for="activeProxyAuth">代理需要用户名/密码</label>
+      </div>
+
+      <div class="proxy-grid">
+        <label>用户名
+          <input id="activeProxyUsername" />
+        </label>
+        <label>密码
+          <input id="activeProxyPassword" type="password" />
+        </label>
+      </div>
+
+      <div class="proxy-test-panel">
+        <button id="testActiveProxyBtn" type="button">测试延迟</button>
+        <div id="activeProxyTestResult" class="proxy-test-result">最近测速：未测试</div>
+      </div>
+
+      <p class="hint">只修改当前选中的 LINE 账号。延迟与出口 IP 在这里测试，不再占用左侧账号卡片空间。已关闭账号保存后不会自动启动；已打开账号会立即应用代理并刷新 LINE。</p>
+      <div class="modal-actions">
+        <button data-close="proxyModal">取消</button>
+        <button id="saveActiveProxyBtn" class="primary">保存代理</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal hidden" id="aggregateNotificationModal">
+    <div class="modal-card aggregate-notification-card">
+      <div class="modal-head">
+        <div>
+          <h3>消息中心</h3>
+          <p class="ops-subtitle">统一查看所有 LINE 账号的新客户消息提醒</p>
+        </div>
+        <button class="close" data-close="aggregateNotificationModal">×</button>
+      </div>
+      <div class="aggregate-notification-toolbar">
+        <button id="aggregateNotificationReadAllBtn" type="button">全部已读</button>
+        <button id="aggregateNotificationClearBtn" type="button">清空记录</button>
+      </div>
+      <div id="aggregateNotificationList" class="aggregate-notification-list">
+        <div class="aggregate-notification-empty">暂时没有新的客户消息提醒</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal hidden" id="opsModal">
+    <div class="modal-card ops-card">
+      <div class="modal-head">
+        <div>
+          <h3>运维中心</h3>
+          <p class="ops-subtitle">多 LINE 健康状态 · 客服数据备份恢复 · 一键诊断</p>
+        </div>
+        <button class="close" data-close="opsModal">×</button>
+      </div>
+
+      <div class="ops-summary-grid" id="opsHealthSummary">
+        <div><span>账号</span><strong id="opsHealthTotal">0</strong></div>
+        <div><span>运行</span><strong id="opsHealthRunning">0</strong></div>
+        <div><span>健康</span><strong id="opsHealthHealthy">0</strong></div>
+        <div><span>异常</span><strong id="opsHealthProblem">0</strong></div>
+      </div>
+
+      <div class="ops-toolbar">
+        <button id="opsHealthRefreshBtn" type="button">刷新健康状态</button>
+        <button id="opsBackupBtn" type="button">备份客服数据</button>
+        <button id="opsRestoreBtn" type="button">恢复客服数据</button>
+        <button id="opsDiagnosticBtn" type="button" class="primary">导出诊断包</button>
+      </div>
+      <p id="opsNotice" class="hint">便携备份不会保存 LINE 登录会话、代理密码或 AI API Key；这些敏感数据留在当前电脑。</p>
+
+      <div class="ops-health-head">
+        <strong>LINE 账号健康</strong>
+        <span id="opsHealthGenerated">尚未读取</span>
+      </div>
+      <div id="opsHealthList" class="ops-health-list">
+        <div class="ops-health-empty">正在读取账号状态…</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal hidden" id="settingsModal">
+    <div class="modal-card settings-card">
+      <div class="modal-head">
+        <h3>设置</h3>
+        <button class="close" data-close="settingsModal">×</button>
+      </div>
+
+      <label>LINE 扩展目录
+        <input id="lineExtensionPath" readonly />
+      </label>
+
+      <div class="row">
+        <button id="detectExtensionBtn">自动检测并导入</button>
+        <button id="importExtensionBtn" class="primary">导入 LINE 扩展</button>
+        <button id="chooseExtensionBtn">仅使用外部目录</button>
+      </div>
+      <p class="hint" id="lineExtensionStatusText">
+        正式安装包已内置 LINE 扩展，正常情况下无需设置。下面三个按钮仅用于扩展升级或修复时的高级备用。
+      </p>
+
+      <hr />
+
+      <h4>软件更新 · GitHub Releases</h4>
+      <div class="provider-card update-card">
+        <div class="update-summary">
+          <div><span>当前版本</span><strong id="updateCurrentVersion">-</strong></div>
+          <div><span>最新版本</span><strong id="updateLatestVersion">-</strong></div>
+        </div>
+        <div class="check-row">
+          <input type="checkbox" id="updateAutoCheck" checked />
+          <label for="updateAutoCheck">启动后自动检查更新</label>
+        </div>
+        <div class="check-row">
+          <input type="checkbox" id="updateAutoDownload" />
+          <label for="updateAutoDownload">发现新版后自动下载</label>
+        </div>
+        <label>自动检查间隔
+          <select id="updateCheckInterval">
+            <option value="1">每 1 小时</option>
+            <option value="3">每 3 小时</option>
+            <option value="6">每 6 小时</option>
+            <option value="12">每 12 小时</option>
+            <option value="24">每 24 小时</option>
+          </select>
+        </label>
+        <div class="row update-actions">
+          <button type="button" id="checkUpdateBtn">检查更新</button>
+          <button type="button" id="downloadUpdateBtn" class="primary" disabled>下载更新</button>
+          <button type="button" id="installUpdateBtn" class="primary" disabled>重启并安装</button>
+        </div>
+        <div id="softwareUpdateStatus" class="ai-test-result">尚未检查更新</div>
+        <p class="hint">使用 GitHub Releases 更新。发布新版时上传 Setup.exe、latest.yml 和 blockmap；更新不会清除 LINE 登录、代理、备注或本地模型。</p>
+      </div>
+
+      <hr />
+      <h4>稳定性诊断</h4>
+      <div class="provider-card stability-settings-card">
+        <div class="stability-settings-copy">
+          <strong>GPT / Meta 客户绑定诊断</strong>
+          <span>查看当前客户权威锁、GPT绑定目标、最近导航原因、被拦截的错误DOM目标和切换事件。不读取聊天正文。</span>
+        </div>
+        <button id="openStabilityDiagnosticsBtn" type="button">打开稳定性诊断</button>
+      </div>
+
+      <div class="modal-actions">
+        <button data-close="settingsModal">取消</button>
+        <button id="saveSettingsBtn" class="primary">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal hidden" id="translationModal">
+    <div class="modal-card settings-card translation-settings-card">
+      <div class="modal-head">
+        <div>
+          <h3>全局翻译设置</h3>
+          <p class="hint" style="margin:4px 0 0;">LINE、TikTok、Facebook、Instagram、WhatsApp、Telegram、Meta Business 共用这一套设置。</p>
+        </div>
+        <button class="close" data-close="translationModal">×</button>
+      </div>
+
+      <h4 id="globalTranslationSettingsHeading">全局聊天消息自动翻译</h4>
+
+      <div class="check-row">
+        <input type="checkbox" id="inlineTranslationEnabled" checked />
+        <label for="inlineTranslationEnabled">所有平台聊天气泡内自动显示译文</label>
+      </div>
+      <div class="check-row">
+        <input type="checkbox" id="translateOutgoingMessages" checked />
+        <label for="translateOutgoingMessages">翻译自己发送的消息</label>
+      </div>
+      <p class="hint">开启时：客户消息照常翻译，你自己发送的日文也会在气泡内显示中文译文；关闭时：只翻译客户入站消息。客户入站优先走 VPS DeepL / 共享缓存，我方消息始终只走本机 Ollama，不进入 DeepL API。</p>
+
+      <div class="provider-card">
+        <h5>GPT API 翻译（重点支持斯瓦希里语 Kiswahili）</h5>
+        <div class="proxy-grid">
+          <label>客户入站翻译引擎
+            <select id="incomingTranslationProvider">
+              <option value="deepl">VPS DeepL（原有默认）</option>
+              <option value="openai">GPT API（斯瓦希里语优先）</option>
+            </select>
+          </label>
+          <label>OpenAI API 模型
+            <input id="openaiTranslationModel" placeholder="gpt-6-luna" autocomplete="off" />
+          </label>
+        </div>
+        <label>OpenAI API Key（本机保存，不在界面回显）
+          <input id="openaiTranslationApiKey" type="password" placeholder="留空保持现有密钥" autocomplete="new-password" />
+        </label>
+        <p id="openaiTranslationKeyStatus" class="hint">API Key 未检测。</p>
+        <button type="button" id="testOpenaiTranslationBtn" class="test-ai-btn">测试斯瓦希里语 GPT 翻译</button>
+        <div id="testOpenaiTranslationResult" class="ai-test-result" role="status">测试需先保存设置，并消耗少量 API 额度。</div>
+        <div id="gptTranslationCacheStats" class="hint">缓存统计加载中…</div>
+        <p class="hint">仅当选择 GPT 后，客户聊天文本才会发送至 OpenAI API 并按用量计费；默认继续走现有 DeepL。推荐翻译模型 gpt-6-luna，也可填写你账号可用的模型 ID。API Key 请勿发到聊天中。</p>
+      </div>
+
+      <div class="provider-card local-only-translation-card">
+        <h5>翻译引擎：服务器预翻译 + VPS DeepL + 共享缓存</h5>
+        <p class="hint">V1.27.133 起，客户入站消息一旦进入 VPS / YokoSCRM 后台就优先预翻译并写入共享 SQLite。你打开客户时优先直接读取已完成译文；重复文本不再次调用 DeepL。</p>
+      </div>
+
+      <div class="provider-card">
+        <h5>VPS DeepL 翻译网关</h5>
+        <p class="hint">这里只检测服务端状态，不会显示或下载 DeepL API Key。Key 只存在 VPS 环境变量中。</p>
+        <button type="button" id="refreshVpsTranslationCacheBtn" class="test-ai-btn">检测 VPS DeepL 翻译</button>
+        <div id="vpsTranslationCacheStatus" class="ai-test-result">尚未检测 VPS DeepL 翻译网关。</div>
+      </div>
+
+      <div class="proxy-grid">
+        <label>原消息语言
+          <select id="inlineSource">
+            <option value="auto">自动检测</option>
+            <option value="ja">日文</option>
+            <option value="en">英文</option>
+            <option value="zh">中文</option>
+            <option value="sw">斯瓦希里语 Kiswahili</option>
+          </select>
+        </label>
+        <label>显示译文语言
+          <select id="inlineTarget">
+            <option value="zh">中文</option>
+            <option value="ja">日文</option>
+            <option value="en">英文</option>
+            <option value="sw">斯瓦希里语 Kiswahili</option>
+          </select>
+        </label>
+      </div>
+
+      <label>显示样式
+        <select id="inlineDisplayMode">
+          <option value="bilingual">双语对照（聊天气泡内显示）</option>
+          <option value="simple">简洁译文</option>
+        </select>
+      </label>
+
+      <div class="ai-settings-box">
+        <h4>本地 AI 翻译设置</h4>
+        <div class="check-row">
+          <input type="checkbox" id="localTranslationFallbackEnabled" checked />
+          <label for="localTranslationFallbackEnabled">启用本地 Ollama 故障备用</label>
+        </div>
+        <p class="hint">默认只在 VPS / DeepL 无法返回译文时才调用本机 Ollama。关闭后，任何服务器翻译故障都不会启动本地模型。</p>
+
+        <div class="provider-card local-provider-card">
+          <h5>本地 AI / Ollama（严格翻译模式）</h5>
+          <div class="proxy-grid">
+            <label>Ollama 本地地址
+              <input id="ollamaUrl" placeholder="http://127.0.0.1:11434" />
+            </label>
+            <label>模型选择模式
+              <select id="ollamaModelMode">
+                <option value="auto_balanced">智能自动（速度 × 准确平衡，推荐）</option>
+                <option value="fixed">固定模型</option>
+              </select>
+            </label>
+          </div>
+          <div id="ollamaAutoModeHint" class="ollama-auto-mode-hint">智能自动会按消息难度和本机实际模型速度动态选择；普通聊天优先较小模型，复杂内容才升档，超时只在本地模型之间降级，不会切到任何云端翻译。</div>
+          <div class="proxy-grid">
+            <label id="ollamaFixedModelField">固定模式模型
+              <select id="ollamaModel">
+                <option value="">智能自动时无需选择</option>
+                <option value="qwen3:0.6b">超轻量 · Qwen3 0.6B</option>
+                <option value="qwen3:1.7b">轻量极速 · Qwen3 1.7B</option>
+                <option value="qwen3:4b">推荐平衡 · Qwen3 4B</option>
+                <option value="qwen3:8b">增强模式 · Qwen3 8B</option>
+                <option value="qwen3:14b">高质量模式 · Qwen3 14B</option>
+              </select>
+            </label>
+          </div>
+          <p class="hint">智能自动只使用已下载模型，不会自动下载。最新消息仍优先翻译；旧译文从本机永久缓存直接恢复。</p>
+          <!-- legacy compatibility text: 安装 / 更新 Ollama 环境 -->
+          <div class="ollama-manager" id="ollamaManager">
+            <div class="ollama-manager-head">
+              <div>
+                <strong>本地 Qwen 环境 / 模型管理</strong>
+                <div id="ollamaRuntimeState" class="ollama-runtime-state">正在检测本机环境…</div>
+              </div>
+              <div class="ollama-manager-head-actions">
+                <button type="button" id="detectOllamaRuntimeBtn" class="test-ai-btn">检测环境</button>
+                <button type="button" id="installOllamaRuntimeBtn" class="test-ai-btn">检测后安装 / 更新</button>
+                <button type="button" id="refreshOllamaManagerBtn" class="test-ai-btn">刷新模型</button>
+              </div>
+            </div>
+            <div id="ollamaModelList" class="ollama-model-list"></div>
+            <div id="ollamaDownloadBox" class="ollama-download-box hidden">
+              <div class="ollama-progress-row"><strong id="ollamaDownloadText">准备下载…</strong><span id="ollamaDownloadPercent">0%</span></div>
+              <div class="ollama-progress-track"><div id="ollamaProgressBar" class="ollama-progress-bar"></div></div>
+              <div id="ollamaDownloadDetail" class="ollama-download-detail"></div>
+            </div>
+          </div>
+          <button type="button" class="test-ai-btn" data-provider="ollama">测试本地 Ollama</button>
+        </div>
+
+        <div id="aiTestResult" class="ai-test-result">可测试本机 Ollama 备用线路；Google 主线路请使用上方“检测 VPS DeepL 翻译”。</div>
+
+        <div class="proxy-grid">
+          <label>上下文消息数量
+            <select id="aiContextMessages">
+              <option value="0">不使用上下文</option>
+              <option value="4">最近 4 条（推荐）</option>
+              <option value="6">最近 6 条</option>
+              <option value="8">最近 8 条</option>
+              <option value="10">最近 10 条</option>
+            </select>
+          </label>
+        </div>
+
+        <p class="hint">客户入站消息：服务器预翻译 / VPS DeepL / 共享缓存优先；本机 Ollama 是否兜底由上方开关决定。我方消息是否翻译由“翻译自己发送的消息”控制；开启后也只走本机 Ollama，不进入 VPS / DeepL API。</p>
+      </div>
+
+      <div class="check-row">
+        <input type="checkbox" id="translationCacheEnabled" checked />
+        <label for="translationCacheEnabled">启用本地翻译缓存（减少重复翻译请求）</label>
+      </div>
+
+      <div class="modal-actions">
+        <button data-close="translationModal">取消</button>
+        <button id="saveTranslationSettingsBtn" class="primary">保存翻译设置</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal hidden" id="contactModal">
+    <div class="modal-card crm-card">
+      <div class="modal-head">
+        <h3>客户资料</h3>
+        <button class="close" data-close="contactModal">×</button>
+      </div>
+
+      <input type="hidden" id="crmAccountId" />
+      <input type="hidden" id="crmDisplayName" />
+      <input type="hidden" id="crmChatId" />
+
+      <div class="crm-summary">
+        <div>
+          <span>LINE账号</span>
+          <strong id="crmAccountName">-</strong>
+        </div>
+        <div>
+          <span>当前聊天</span>
+          <strong id="crmChatName">-</strong>
+        </div>
+      </div>
+
+      <div class="crm-grid">
+        <label>跟进阶段
+          <select id="crmStage">
+            <option value="新客户">新客户</option>
+            <option value="了解中">了解中</option>
+            <option value="信任建立">信任建立</option>
+            <option value="重点跟进">重点跟进</option>
+            <option value="已成交">已成交</option>
+            <option value="暂缓">暂缓</option>
+          </select>
+        </label>
+
+        <label>姓名
+          <input id="crmName" placeholder="客户姓名 / 你的备注姓名" />
+        </label>
+      </div>
+
+      <div class="crm-grid">
+        <label>客户语言
+          <select id="crmLanguage">
+            <option value="ja">日语</option>
+            <option value="zh">中文</option>
+            <option value="en">英语</option>
+            <option value="other">其他</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="crm-grid crm-grid-three">
+        <label>地区
+          <input id="crmRegion" placeholder="例如：东京 / 大阪 / 福冈" />
+        </label>
+        <label>年龄
+          <input id="crmAge" placeholder="例如：52" />
+        </label>
+        <label>职业
+          <input id="crmOccupation" placeholder="例如：制造业 / 农业 / 自营业" />
+        </label>
+      </div>
+
+      <label>兴趣 / 关键词
+        <input id="crmInterests" placeholder="例如：温泉、旅行、高尔夫、美食" />
+      </label>
+
+      <label>标签
+        <input id="crmTags" placeholder="例如：重点客户、周末联系、已语音（用逗号分隔）" />
+      </label>
+
+
+      <label>备注
+        <textarea id="crmNote" rows="7" placeholder="记录工作、兴趣、家庭、聊天重点、下次切入点……"></textarea>
+      </label>
+
+      <p class="hint">
+        客户资料只保存在本机 Yoko SCRM，不会发送到 LINE。聚合模式优先使用“LINE账号 + 客户MID”作为稳定索引。
+      </p>
+
+      <div class="modal-actions">
+        <button data-close="contactModal">取消</button>
+        <button id="saveContactBtn" class="primary">保存客户资料</button>
+      </div>
+    </div>
+  </div>
+
+
+  <div class="modal hidden" id="chatgptReplyStyleModal">
+    <div class="modal-card gpt-reply-style-card">
+      <div class="modal-head">
+        <div><h3>GPT 回复语气</h3><p class="gpt-style-subtitle">“客户消息→GPT”时会自动把这里的要求一起放进 ChatGPT。可以随时切换，不影响已经绑定的历史对话。</p></div>
+        <button class="close" data-close="chatgptReplyStyleModal">×</button>
+      </div>
+
+      <label>常用语气快速切换</label>
+      <div class="gpt-tone-presets" role="group" aria-label="GPT 常用回复语气">
+        <button type="button" data-gpt-tone-preset="warm">自然温柔</button>
+        <button type="button" data-gpt-tone-preset="friend">轻松朋友</button>
+        <button type="button" data-gpt-tone-preset="heartfelt">精聊走心</button>
+        <button type="button" data-gpt-tone-preset="close">亲近一点</button>
+        <button type="button" data-gpt-tone-preset="short">简短自然</button>
+        <button type="button" data-gpt-tone-preset="english">英文自然</button>
+        <button type="button" data-gpt-tone-preset="auto">自动语言</button>
+      </div>
+
+      <label>回复语气 / 额外要求
+        <textarea id="chatgptReplyTone" rows="6" maxlength="1200" placeholder="例如：自然温柔、走心、有亲近感，先回应对方情绪，再分享自己的感受，不要机械连续提问。"></textarea>
+      </label>
+
+      <label>直接发送回复的语言格式
+        <select id="chatgptReplyFormat">
+          <option value="auto">自动识别客户语言</option>
+          <option value="bilingual">中日双语（日语在前 + 中文对照）</option>
+          <option value="japanese">仅日语</option>
+          <option value="chinese">仅中文</option>
+          <option value="english">仅英文</option>
+        </select>
+      </label>
+
+      <label>保存范围
+        <select id="chatgptReplyScope">
+          <option value="customer">仅当前客户</option>
+          <option value="global">全局默认</option>
+        </select>
+      </label>
+      <div id="chatgptReplyScopeHint" class="hint">有选中客户时可单独保存；未设置的客户继续继承全局默认。</div>
+
+      <p class="hint">“自动识别客户语言”会在英文客户时只输出英文；日语客户继续按日语 + 中文对照；中文客户只输出中文。每个客户可以保存自己的语气和语言格式。</p>
+
+      <div id="chatgptReplyStyleStatus" class="gpt-style-save-status">当前设置会保存在本机。</div>
+      <div class="modal-actions">
+        <button id="resetChatgptReplyStyleBtn" type="button">恢复默认</button>
+        <button id="inheritChatgptReplyStyleBtn" type="button">当前客户继承全局</button>
+        <button data-close="chatgptReplyStyleModal" type="button">取消</button>
+        <button id="saveChatgptReplyStyleBtn" class="primary" type="button">保存并使用</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal hidden" id="automationFoundationModal">
+    <div class="modal-card gpt-reply-style-card automation-foundation-card">
+      <div class="modal-head">
+        <div><h3>自动化底座</h3><p class="gpt-style-subtitle">V1.24.0 智能客户上下文：LINE意向/引导进度、长期记忆、CRM+最近聊天+Yoko人设统一送入 GPT。</p></div>
+        <button class="close" data-close="automationFoundationModal">×</button>
+      </div>
+
+
+      <label class="automation-master-row"><input id="automationMasterEnabled" type="checkbox" checked /> <span><strong>自动化总开关</strong><small>打开：自动识别客户新消息并自动送 GPT 生成。关闭：停止所有自动识别/自动生成；手动“客户消息→GPT、复制、发送”仍可使用。</small></span></label>
+
+      <div class="automation-foundation-summary">
+        <div><span>当前阶段</span><strong>自动生成 · 人工确认发送</strong></div>
+        <div><span>GPT监控</span><strong id="automationGptMonitorStatus">等待读取</strong></div>
+        <div><span>发送队列</span><strong id="automationQueueStatus">等待读取</strong></div>
+      </div>
+
+      <label class="automation-check-row"><input id="automationSendQueueEnabled" type="checkbox" checked /> <span><strong>发送任务排队</strong><small>同一个平台账号一次只执行一条发送任务，避免并发串客户。</small></span></label>
+      <label class="automation-check-row"><input id="automationPreventDuplicateSend" type="checkbox" checked /> <span><strong>防重复发送</strong><small>短时间内相同客户、相同正文、相同图片只允许成功一次。</small></span></label>
+      <label>重复发送保护时间
+        <select id="automationDuplicateWindowMs">
+          <option value="3000">3 秒</option>
+          <option value="5000">5 秒（推荐）</option>
+          <option value="8000">8 秒</option>
+          <option value="12000">12 秒</option>
+        </select>
+      </label>
+      <label class="automation-check-row"><input id="automationTargetRecheck" type="checkbox" checked /> <span><strong>发送前再次确认客户</strong><small>真正按 Enter / Send 前重新确认平台、账号和客户仍是原目标。</small></span></label>
+      <label class="automation-check-row"><input id="automationDiagnosticsEnabled" type="checkbox" checked /> <span><strong>自动化诊断日志</strong><small>只记录任务状态、耗时和错误，不记录聊天正文。</small></span></label>
+
+      <div class="automation-section-divider"><strong>AI 自动生成</strong><small>只监控当前选中的客户；仅对已绑定 GPT 的客户自动生成，不会自动发给客户。</small></div>
+      <label class="automation-check-row"><input id="automationAutoGenerateReplyEnabled" type="checkbox" checked /> <span><strong>客户新消息自动生成 GPT 回复</strong><small>识别到当前客户的新文字消息后，自动送入该客户绑定的 ChatGPT 对话并开始生成。</small></span></label>
+      <label class="automation-check-row"><input id="automationAutoGenerateOnSelection" type="checkbox" checked /> <span><strong>选中客户时检查待回复消息</strong><small>如果刚打开的客户最后一条是客户消息且尚未回复，也自动生成一次建议回复。</small></span></label>
+      <label>连续消息合并等待
+        <select id="automationAutoGenerateDebounceMs">
+          <option value="1200">1.2 秒</option>
+          <option value="1800">1.8 秒（推荐）</option>
+          <option value="2500">2.5 秒</option>
+          <option value="4000">4 秒</option>
+        </select>
+      </label>
+
+      <div id="automationFoundationStatus" class="gpt-style-save-status">正在读取自动化状态…</div>
+      <div class="modal-actions">
+        <button data-close="automationFoundationModal" type="button">取消</button>
+        <button id="saveAutomationFoundationBtn" class="primary" type="button">保存设置</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal hidden" id="chatgptPersonaModal">
+    <div class="modal-card gpt-reply-style-card">
+      <div class="modal-head">
+        <div><h3>GPT 人设 + 长期回复规则</h3><p class="gpt-style-subtitle">Day 1～Day 10 已取消。新客户创建专属 GPT 对话时，会把固定人设和长期 Stage 回复规则作为一个 TXT 附件发送一次，避免大段文本塞进输入框。</p></div>
+        <button class="close" data-close="chatgptPersonaModal">×</button>
+      </div>
+
+      <label>固定人设资料
+        <textarea id="chatgptPersonaProfile" rows="12" maxlength="20000" placeholder="填写 Yoko 的固定人设资料。"></textarea>
+      </label>
+
+      <label>长期回复规则（新 GPT 客户会话首次作为 TXT 附件发送）
+        <textarea id="chatgptReplyRules" rows="22" maxlength="40000" placeholder="关系阶段、真实对话优先级、边界、弱回应、输出格式等长期规则。"></textarea>
+      </label>
+      <p class="hint">新客户：你手动打开 GPT 工作台时，如果该客户尚未绑定 GPT，Yoko 会只创建一个新的专属对话，把“固定人设 + 长期回复规则”合并成 Yoko_Persona_Rules.txt 附件，再发送一条很短的初始化指令；生成稳定对话 ID 后自动绑定。附件失败时不会回退为大段文字粘贴。已绑定客户不会重复初始化。</p>
+
+      <div id="chatgptPersonaStatus" class="gpt-style-save-status">当前人设和回复规则会保存在本机。</div>
+      <div class="modal-actions">
+        <button id="resetChatgptPersonaBtn" type="button">恢复默认</button>
+        <button data-close="chatgptPersonaModal" type="button">取消</button>
+        <button id="saveChatgptPersonaBtn" type="button">保存</button>
+        <button id="sendChatgptPersonaBtn" class="primary" type="button">保存并以TXT附件发送给GPT</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal hidden" id="aiReplyModal">
+    <div class="modal-card ai-reply-card">
+      <div class="modal-head">
+        <h3>AI 回复</h3>
+        <button class="close" data-close="aiReplyModal">×</button>
+      </div>
+
+      <div class="crm-summary">
+        <div>
+          <span>当前聊天</span>
+          <strong id="aiReplyChatName">-</strong>
+        </div>
+        <div>
+          <span>使用引擎</span>
+          <strong id="aiReplyProviderLabel">按设置</strong>
+        </div>
+      </div>
+
+      <label>客户最近消息
+        <textarea id="aiReplyCustomerMessage" rows="4" readonly placeholder="打开当前聊天后会自动读取"></textarea>
+      </label>
+
+      <label>本次回复要求
+        <textarea id="aiReplyRequest" rows="6" placeholder="例如：温柔自然一点，不要连续提问，先回应他的工作，再分享自己的生活，日语回复。"></textarea>
+      </label>
+
+      <div class="chatscript-integration-status" id="chatScriptIntegrationStatus">
+        <strong>Chat Script AI</strong><span id="chatScriptStatusText">正在检测…</span>
+      </div>
+      <div class="modal-actions ai-reply-actions">
+        <button id="generateChatScriptReplyBtn" class="primary">Chat Script AI 长期记忆生成</button>
+        <button id="generateAiReplyBtn">原 AI 引擎生成</button>
+      </div>
+
+      <label>日语可发送回复
+        <textarea id="aiReplyResult" rows="8" placeholder="生成后会显示在这里，你可以手动修改"></textarea>
+      </label>
+      <label>中文对照
+        <textarea id="aiReplyTranslation" rows="5" readonly placeholder="Chat Script AI 会同时返回中文对照"></textarea>
+      </label>
+      <div id="chatScriptRelationshipState" class="ai-reply-status"></div>
+      <div id="aiReplyStatus" class="ai-reply-status">AI 只生成草稿，不会自动发送。</div>
+      <div class="modal-actions" id="chatScriptFeedbackActions" style="display:none">
+        <button id="chatScriptEffectiveBtn" type="button">👍 收进有效话术</button>
+        <button id="chatScriptRejectBtn" type="button">不合适</button>
+      </div>
+
+      <div class="modal-actions">
+        <button data-close="aiReplyModal">关闭</button>
+        <button id="writeAiReplyBtn" class="primary" disabled>写入 LINE 输入框</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal hidden" id="externalFlowSettingsModal">
+    <div class="modal-card line-flow-settings-card">
+      <div class="modal-head">
+        <div><h3>非 LINE 平台流程设置</h3><p class="app-account-modal-meta">TikTok、Facebook、Instagram、WhatsApp、Telegram、Meta Business 共用“引流转化”漏斗。LINE 已添加阶段固定保留，用于转化统计。</p></div>
+        <button class="close" data-close="externalFlowSettingsModal">×</button>
+      </div>
+      <div id="externalFlowStageList" class="line-flow-settings-list"></div>
+      <div class="line-flow-settings-add">
+        <input id="externalFlowStageInput" type="text" maxlength="40" placeholder="新增流程阶段，例如：信任建立 / 重点跟进" />
+        <button id="externalFlowStageAddBtn" class="primary" type="button">添加阶段</button>
+      </div>
+      <p class="hint">流程会统一同步到所有非 LINE 平台的右侧客户资料。建议按“新进线 → 已接待 → 有效聊天 → 准备引导LINE → 已邀请LINE → LINE已添加”推进；历史阶段不会因为修改列表而丢失。</p>
+    </div>
+  </div>
+
+  <div class="modal hidden" id="externalOpsModal">
+    <div class="modal-card ops-card external-ops-card">
+      <div class="modal-head">
+        <div><h3>全平台运维</h3><p class="ops-subtitle">只统计非 LINE 应用 · 独立账号/Profile/代理运行状态</p></div>
+        <button class="close" data-close="externalOpsModal">×</button>
+      </div>
+      <div class="ops-summary-grid">
+        <div><span>账号</span><strong id="externalOpsTotal">0</strong></div>
+        <div><span>运行</span><strong id="externalOpsRunning">0</strong></div>
+        <div><span>已关闭</span><strong id="externalOpsClosed">0</strong></div>
+        <div><span>平台</span><strong id="externalOpsPlatforms">0</strong></div>
+      </div>
+      <div class="ops-toolbar">
+        <button id="externalOpsRefreshBtn" type="button">刷新状态</button>
+        <button id="externalOpsAggregateRefreshBtn" type="button">刷新聚合数据</button>
+        <button id="externalOpsDiagnosticPackBtn" class="primary" type="button">导出诊断包</button>
+      </div>
+      <div class="ops-health-head"><strong>非 LINE 账号运行状态</strong><span id="externalOpsUpdatedAt">尚未读取</span></div>
+      <div id="externalOpsList" class="ops-health-list"><div class="ops-health-empty">正在读取账号状态…</div></div>
+    </div>
+  </div>
+
+  <div class="modal hidden" id="teamSyncModal">
+    <div class="modal-card team-sync-card">
+      <div class="modal-head">
+        <div><h2>团队云同步 · 跨设备承接中心</h2><p>引流电脑只同步CRM资料和承接任务，不同步 TikTok / LINE 的 Cookie、Session、密码或代理密码。</p></div>
+        <button data-close="teamSyncModal">×</button>
+      </div>
+      <div class="team-sync-status-row">
+        <span id="teamSyncConnectionBadge" class="team-sync-badge offline">未连接</span>
+        <span id="teamSyncLastSync">尚未同步</span>
+        <button id="teamSyncNowBtn" type="button">立即同步</button>
+      </div>
+      <div class="team-node-role-panel">
+        <div class="team-node-role-main"><span id="teamNodeRoleBadge" class="team-node-role-badge idle">空闲节点</span><div><strong id="teamNodeRoleTitle">角色自动识别</strong><small>登录 TikTok / Meta / Facebook / Instagram = 引流；登录 LINE / WhatsApp / Telegram = 承接；两类同时登录 = 双角色。</small></div></div>
+        <div id="teamNodeCapabilityList" class="team-node-capability-list"><span class="muted">等待检测已登录账号…</span></div>
+      </div>
+      <div class="team-sync-grid">
+        <label class="field"><span>启用团队同步</span><select id="teamSyncEnabled"><option value="0">关闭</option><option value="1">开启</option></select></label>
+        <label class="field"><span>管理权限</span><select id="teamSyncRole"><option value="admin">管理员（可查看全部任务）</option><option value="employee">员工</option></select></label>
+        <label class="field"><span>运行模式</span><select id="teamSyncMode"><option value="client">连接云端团队服务器（推荐）</option><option value="server-local">本机作为团队服务器（仅本机）</option><option value="server-lan">局域网团队服务器（允许其他电脑连接）</option><option value="server-cloudflare-token">旧版：本机 Cloudflare 固定隧道（回滚/应急）</option><option value="server-cloudflare-quick">Cloudflare 应急临时隧道（手动）</option></select></label>
+        <label class="field"><span>设备名称</span><input id="teamSyncDeviceName" placeholder="例如：引流电脑01 / 员工小王" /></label>
+        <label class="field team-sync-wide"><span>团队服务器地址</span><input id="teamSyncServerUrl" placeholder="https://team.dalongvpn.cc.cd" /></label>
+        <label class="field"><span>服务器端口</span><input id="teamSyncServerPort" type="number" min="1024" max="65535" value="17891" /></label>
+        <label class="field"><span>团队ID</span><input id="teamSyncTeamId" placeholder="team-xxxx" /></label>
+        <label class="field team-sync-wide"><span>同步密钥</span><input id="teamSyncApiKey" type="password" placeholder="所有团队电脑填写同一个密钥" /></label>
+      </div>
+      <div id="teamSyncCloudflarePanel" class="team-sync-cloudflare hidden">
+        <div class="team-sync-section-head compact"><div><strong>Cloudflare Tunnel</strong><small>固定入口由 Windows cloudflared Service 托管；Yoko SCRM 本机团队服务只监听 127.0.0.1:17891</small></div><span id="teamSyncCloudflareStatus">等待检测</span></div>
+        <div class="team-sync-grid compact">
+          <label id="teamSyncCloudflaredPathField" class="field team-sync-wide"><span id="teamSyncCloudflaredPathLabel">cloudflared 路径（可留空自动检测）</span><input id="teamSyncCloudflaredPath" placeholder="例如 C:\Cloudflared\bin\cloudflared.exe；已加入 PATH 可留空" /></label>
+          <label class="field team-sync-wide"><span>Cloudflare 公网地址</span><input id="teamSyncCloudflarePublicUrl" placeholder="https://team.dalongvpn.cc.cd" /></label>
+          <label id="teamSyncCloudflareTokenField" class="field team-sync-wide hidden" aria-hidden="true"><span>Tunnel Token（兼容字段）</span><input id="teamSyncCloudflareToken" type="password" tabindex="-1" autocomplete="off" placeholder="固定模式不使用 Tunnel Token" /></label>
+        </div>
+        <div class="team-sync-actions cloudflare-actions">
+          <button id="teamSyncCloudflareDetectBtn" type="button">检测 cloudflared</button>
+          <button id="teamSyncCloudflareDownloadBtn" type="button">Cloudflare 安装说明</button>
+          <button id="teamSyncCloudflareTestBtn" type="button">测试公网地址</button>
+          <button id="teamSyncCopyClientConfigBtn" type="button">复制员工连接配置</button>
+        </div>
+        <div id="teamSyncCloudflareHint" class="team-sync-note cloudflare-note">固定团队入口：https://team.dalongvpn.cc.cd。软件不会保存 Tunnel Token，也不会重复启动固定 cloudflared 进程。</div>
+      </div>
+      <div class="team-connection-transfer-panel">
+        <div class="team-sync-section-head compact"><div><strong>新电脑快速连接</strong><small>主电脑导出一次；其他电脑导入后自动启用团队承接，并共用 VPS DeepL 翻译网关。</small></div></div>
+        <div class="team-sync-actions team-connection-transfer-actions">
+          <button id="teamSyncCopyConnectionCodeBtn" type="button">复制团队连接码</button>
+          <button id="teamSyncExportConnectionFileBtn" type="button">导出连接文件</button>
+          <button id="teamSyncPasteConnectionCodeBtn" type="button">粘贴连接码并连接</button>
+          <button id="teamSyncImportConnectionFileBtn" type="button">导入连接文件并连接</button>
+          <input id="teamSyncImportConnectionFileInput" class="hidden" type="file" accept=".json,.yoko-team.json,application/json" />
+        </div>
+        <div id="teamSyncConnectionTransferStatus" class="team-sync-note team-connection-transfer-note">连接码/文件只包含 VPS 地址、团队ID和同步密钥；属于敏感凭据，请勿公开分享。</div>
+      </div>
+      <div class="team-sync-actions">
+        <button id="teamSyncGenerateBtn" type="button">生成团队ID + 密钥</button>
+        <button id="teamSyncSaveBtn" class="primary" type="button">保存并连接</button>
+      </div>
+      <div class="team-sync-note">正式环境推荐使用“连接云端团队服务器”，统一连接 https://team.dalongvpn.cc.cd。旧版本机 Cloudflare 模式仅保留作回滚/应急，不再作为生产默认。</div>
+      <div class="team-sync-section-head"><div><strong>在线团队节点</strong><small>角色由各设备当前实际登录的平台自动决定；管理员可移除不用的历史/离线节点记录。</small></div></div>
+      <div id="teamNodeDeviceList" class="team-node-device-list"><div class="dashboard-empty">等待团队同步…</div></div>
+      <div class="team-sync-section-head"><div><strong>本机 LINE 账号映射</strong><small>只有当前已登录的 LINE 账号会成为可接单 endpoint；映射本身可提前配置。</small></div></div>
+      <div id="teamSyncLineMappingList" class="team-sync-line-mapping"><div class="dashboard-empty">本机暂无 LINE 账号</div></div>
+      <div class="team-sync-section-head"><div><strong>LINE承接任务</strong><small id="teamSyncTaskSummary">待接单 0 · 待绑定 0 · 已绑定 0</small></div><span id="teamSyncServerStats">服务器：--</span></div>
+      <div id="teamSyncTaskList" class="team-sync-task-list"><div class="dashboard-empty">暂无承接任务</div></div>
+      <div class="team-sync-actions"><button id="teamSyncHandoffHealthBtn" type="button">查看链路健康</button></div>
+      <div class="modal-actions"><button data-close="teamSyncModal">完成</button></div>
+    </div>
+  </div>
+
+  <div class="modal hidden" id="nativeApiInboxesModal">
+    <div class="modal-card native-api-fb-pages-modal">
+      <div class="modal-head"><div><strong>Facebook 多官方收件箱</strong><small>一个 Page 只能属于一个收件箱；所有 Page Token 仍由原有 VPS API 账号池管理。</small></div><button data-close="nativeApiInboxesModal">×</button></div>
+      <div class="native-api-inbox-create"><input id="nativeApiNewInboxName" placeholder="新收件箱名称，如 BELK 招商二组" maxlength="60" /><button id="nativeApiInboxCreateBtn" type="button">新建收件箱</button></div>
+      <div id="nativeApiInboxManager"></div>
+      <div class="modal-actions"><button data-close="nativeApiInboxesModal">完成</button></div>
+    </div>
+  </div>
+  <div class="modal hidden" id="nativeApiAutoReplyModal">
+    <div class="modal-card native-api-fb-pages-modal">
+      <div class="modal-head"><div><strong>Facebook 首次消息自动回复</strong><small>每个主页独立设置；每位客户每个主页只尝试自动回复一次。设置保存于 VPS。</small></div><button data-close="nativeApiAutoReplyModal">×</button></div>
+      <div id="nativeApiAutoReplyPages" class="native-api-auto-reply-pages"><div class="native-api-empty">正在读取 Facebook Page 设置…</div></div>
+      <div id="nativeApiAutoReplyStatus" class="native-api-fb-pages-status">默认关闭。启用后，仅对符合 Meta 消息发送规则且通过新消息校验的客户自动发送。</div>
+      <div class="modal-actions"><button data-close="nativeApiAutoReplyModal">完成</button></div>
+    </div>
+  </div>
+  <div class="modal hidden" id="nativeApiFbPagesModal">
+    <div class="modal-card native-api-fb-pages-modal">
+      <div class="modal-head"><div><strong>Facebook API 账号池</strong><small>每个 Page 独立 Token、独立开关；发送时按客户 pageId 自动路由。Token 仅保存到 VPS。</small></div><button data-close="nativeApiFbPagesModal">×</button></div>
+      <div id="nativeApiFbPagesList" class="native-api-fb-pages-list"><div class="native-api-empty">正在读取 Facebook Page…</div></div>
+      <div class="native-api-fb-page-editor">
+        <input id="nativeApiFbPageId" type="hidden" />
+        <label><span>Page 名称（可选）</span><input id="nativeApiFbPageName" placeholder="例如：FB01 东京主页" /></label>
+        <label><span>Page Access Token</span><input id="nativeApiFbPageToken" type="password" autocomplete="off" placeholder="新增时必填；编辑时留空=保留原 Token" /></label>
+        <label class="native-api-fb-page-enabled"><input id="nativeApiFbPageEnabled" type="checkbox" checked /><span>启用这个 Page API</span></label>
+        <div class="native-api-fb-page-editor-actions"><button id="nativeApiFbPageClearBtn" type="button">新建</button><button id="nativeApiFbPageSaveBtn" class="primary" type="button">验证并保存</button></div>
+      </div>
+      <div id="nativeApiFbPagesStatus" class="native-api-fb-pages-status">支持多个 Page 共用同一个 Meta App / Webhook；每个 Page 使用自己的 Page Access Token。</div>
+      <div class="modal-actions"><button data-close="nativeApiFbPagesModal">完成</button></div>
+    </div>
+  </div>
+
+  <div class="modal hidden" id="nativeApiBulkModal">
+    <div class="modal-card native-api-bulk-card">
+      <div class="modal-head">
+        <div><h2>多渠道客户群发</h2><p>先选择聊天软件和跟进分组，再读取该组客户。LINE / TG / WS / Facebook 的客户和发送通道彼此隔离。</p></div>
+        <button data-close="nativeApiBulkModal">×</button>
+      </div>
+      <div class="native-api-bulk-layout">
+        <section class="native-api-bulk-recipients">
+          <div class="native-api-bulk-section-head"><div><strong>选择客户</strong><small id="nativeApiBulkCustomerMeta">正在读取…</small></div><button id="nativeApiBulkSelectVisibleBtn" type="button">全选当前</button></div>
+          <div class="native-api-bulk-filters">
+            <select id="nativeApiBulkPlatform" title="选择聊天软件"><option value="line">LINE</option><option value="telegram">TG · Telegram</option><option value="whatsapp">WS · WhatsApp</option><option value="facebook">Facebook Messenger</option></select>
+            <input id="nativeApiBulkSearch" type="search" placeholder="搜索姓名 / 阶段 / 最近消息…" autocomplete="off" />
+          </div>
+          <div id="nativeApiBulkFacebookAccountWrap" class="native-api-bulk-facebook-account hidden">
+            <label>Facebook 账号（主页）</label>
+            <select id="nativeApiBulkFacebookAccount" title="选择 Facebook 账号"></select>
+          </div>
+          <div id="nativeApiBulkFrontFilterWrap" class="native-api-bulk-front-filter">
+            <label for="nativeApiBulkCrmStage">前端备注</label>
+            <select id="nativeApiBulkCrmStage" title="按前端备注筛选群发客户">
+              <option value="all">全部客户</option>
+              <option value="new">待回复</option>
+              <option value="active">有意向</option>
+              <option value="invited">已邀请 LINE</option>
+              <option value="added">已对接 WS</option>
+              <option value="paused">无效 / 暂停</option>
+            </select>
+          </div>
+          <div id="nativeApiBulkStageGroups" class="native-api-bulk-stage-groups" aria-label="按跟进分组筛选群发客户">
+            <button class="active" type="button" data-native-api-bulk-stage-group="all">全部 <span>0</span></button>
+            <button type="button" data-native-api-bulk-stage-group="new">新进线 <span>0</span></button>
+            <button type="button" data-native-api-bulk-stage-group="active">有效聊天 <span>0</span></button>
+            <button type="button" data-native-api-bulk-stage-group="invited">已邀请LINE <span>0</span></button>
+            <button type="button" data-native-api-bulk-stage-group="added">已添加LINE <span>0</span></button>
+            <button type="button" data-native-api-bulk-stage-group="paused">无效/暂停 <span>0</span></button>
+          </div>
+          <div id="nativeApiBulkLineLifecycleGroups" class="native-api-bulk-line-groups hidden" aria-label="按 LINE 客户天数分组群发">
+            <button class="active" type="button" data-native-api-bulk-line-group="all">全部 <span>0</span></button>
+            <button type="button" data-native-api-bulk-line-group="new">新客户 <span>0</span></button>
+            <button type="button" data-native-api-bulk-line-group="day1">第1天 <span>0</span></button>
+            <button type="button" data-native-api-bulk-line-group="day2">第2天 <span>0</span></button>
+            <button type="button" data-native-api-bulk-line-group="day3">第3天 <span>0</span></button>
+            <button type="button" data-native-api-bulk-line-group="day4">第4天 <span>0</span></button>
+            <button type="button" data-native-api-bulk-line-group="day5">第5天 <span>0</span></button>
+            <button type="button" data-native-api-bulk-line-group="day6">第6天 <span>0</span></button>
+            <button type="button" data-native-api-bulk-line-group="day7">第7天 <span>0</span></button>
+            <button type="button" data-native-api-bulk-line-group="day8">第8天 <span>0</span></button>
+            <button type="button" data-native-api-bulk-line-group="day9">第9天 <span>0</span></button>
+            <button type="button" data-native-api-bulk-line-group="day10">第10天+ <span>0</span></button>
+          </div>
+          <div id="nativeApiBulkCustomerList" class="native-api-bulk-customer-list"><div class="native-api-empty">正在读取客户…</div></div>
+        </section>
+        <section class="native-api-bulk-editor">
+          <div class="native-api-bulk-section-head"><div><strong>群发内容</strong><small>正文由你编辑；仅发送给当前软件里勾选的客户。</small></div><span id="nativeApiBulkSelectedCount" class="native-api-bulk-selected-count">已选 0</span></div>
+          <textarea id="nativeApiBulkComposer" maxlength="12000" rows="7" placeholder="输入要群发的内容…"></textarea>
+          <div class="native-api-bulk-mode-grid">
+            <label>发送方式<select id="nativeApiBulkSendMode"><option value="immediate">立即群发</option><option value="scheduled">定时群发</option></select></label>
+            <label id="nativeApiBulkScheduleWrap" class="hidden">计划开始时间（电脑本机时间）<input id="nativeApiBulkScheduleAt" type="datetime-local" /></label>
+          </div>
+          <div class="native-api-bulk-delay-grid">
+            <label>最短随机间隔（秒）<input id="nativeApiBulkMinDelay" type="number" min="5" max="3600" step="1" value="15" /></label>
+            <label>最长随机间隔（秒）<input id="nativeApiBulkMaxDelay" type="number" min="5" max="3600" step="1" value="45" /></label>
+          </div>
+          <div class="native-api-bulk-note">立即群发：首位先随机等待；定时群发：到点先发送第一位，之后每位重新随机等待。始终逐个发送，不会同一时间并发。定时期间需要 Yoko SCRM 保持运行并保持对应账号登录。</div>
+          <div class="native-api-bulk-progress">
+            <div class="native-api-bulk-progress-head"><strong id="nativeApiBulkProgressTitle">尚未开始</strong><span id="nativeApiBulkCountdown">--</span></div>
+            <div id="nativeApiBulkProgressBar" class="native-api-bulk-progress-bar"><span></span></div>
+            <small id="nativeApiBulkProgressMeta">选择软件、客户和发送方式后即可开始。</small>
+          </div>
+          <div id="nativeApiBulkResultList" class="native-api-bulk-result-list"><div class="native-api-empty">暂无发送记录</div></div>
+        </section>
+      </div>
+      <div class="native-api-bulk-actions">
+        <span id="nativeApiBulkActionHint">当前任务只使用所选聊天软件的客户和发送通道。</span>
+        <button id="nativeApiBulkPauseBtn" type="button" disabled>暂停</button>
+        <button id="nativeApiBulkResumeBtn" type="button" disabled>继续</button>
+        <button id="nativeApiBulkCancelBtn" class="danger" type="button" disabled>取消任务</button>
+        <button id="nativeApiBulkStartBtn" class="primary" type="button">开始随机群发</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal hidden" id="performanceDiagnosticsModal">
+    <div class="modal-card performance-diagnostics-card">
+      <div class="modal-head">
+        <div>
+          <h2>性能诊断 · 卡顿定位</h2>
+          <p>实时观察 CPU、内存、各聊天网页进程、队列、SQLite/API 读取耗时和界面卡顿。只采集性能元数据，不读取聊天正文。</p>
+        </div>
+        <button data-close="performanceDiagnosticsModal">×</button>
+      </div>
+      <div class="performance-diagnostics-toolbar">
+        <span id="performanceDiagOverall" class="performance-diag-badge idle">等待采样</span>
+        <span id="performanceDiagCheckedAt">--</span>
+        <div class="topbar-spacer"></div>
+        <button id="performanceDiagRefreshBtn" class="primary" type="button">立即刷新</button>
+        <button id="performanceDiagCopyBtn" type="button">复制诊断</button>
+      </div>
+      <div class="performance-diag-summary">
+        <div><span>总 CPU</span><strong id="performanceDiagCpu">--</strong><small id="performanceDiagCpuHint">Electron 全进程</small></div>
+        <div><span>总内存</span><strong id="performanceDiagMemory">--</strong><small id="performanceDiagMemoryHint">--</small></div>
+        <div><span>Yoko FPS</span><strong id="performanceDiagFps">--</strong><small id="performanceDiagFpsHint">主界面渲染</small></div>
+        <div><span>主进程卡顿</span><strong id="performanceDiagJank">--</strong><small id="performanceDiagJankHint">事件循环漂移</small></div>
+        <div><span>SQLite/API</span><strong id="performanceDiagSqlite">--</strong><small id="performanceDiagSqliteHint">暂无样本</small></div>
+        <div><span>任务队列</span><strong id="performanceDiagQueue">--</strong><small id="performanceDiagQueueHint">自动发送 / GPT / 翻译</small></div>
+      </div>
+      <div class="performance-diag-section-head"><strong>网页进程占用</strong><small>按当前采样显示 LINE、Facebook、TikTok、Telegram、ChatGPT 和 Yoko 主界面；红色表示当前占用较高。</small></div>
+      <div class="performance-process-table-wrap">
+        <table class="performance-process-table">
+          <thead><tr><th>页面 / 账号</th><th>状态</th><th>CPU</th><th>内存</th><th>PID</th><th>域名</th></tr></thead>
+          <tbody id="performanceDiagProcessBody"><tr><td colspan="6">等待采样…</td></tr></tbody>
+        </table>
+      </div>
+      <div class="performance-diag-lower-grid">
+        <section>
+          <div class="performance-diag-section-head"><strong>队列与扫描</strong><small>积压持续增长通常会造成切客户和翻译延迟。</small></div>
+          <div id="performanceDiagQueueList" class="performance-diag-keylist"><div><span>等待采样</span><strong>--</strong></div></div>
+        </section>
+        <section>
+          <div class="performance-diag-section-head"><strong>自动判断</strong><small>根据当前采样提示最可能的卡顿来源。</small></div>
+          <div id="performanceDiagAdvice" class="performance-diag-advice"><div class="ok">等待采样…</div></div>
+        </section>
+      </div>
+      <details class="performance-diag-raw"><summary>查看原始性能 JSON</summary><pre id="performanceDiagRaw">{}</pre></details>
+      <div class="modal-actions"><button data-close="performanceDiagnosticsModal">完成</button></div>
+    </div>
+  </div>
+
+  <div class="modal hidden" id="stabilityDiagnosticsModal">
+    <div class="modal-card stability-diagnostics-card">
+      <div class="modal-head">
+        <div>
+          <h2>稳定性诊断 · 系统健康</h2>
+          <p>一眼检查 Facebook Webhook、自动补漏、SQLite、LINE、翻译队列、GPT 和桌面运行状态；不记录聊天正文、Cookie、Token、密钥或代理密码。</p>
+        </div>
+        <button data-close="stabilityDiagnosticsModal">×</button>
+      </div>
+      <div class="stability-diagnostics-toolbar">
+        <span id="stabilitySystemOverallBadge" class="stability-diag-badge idle">等待系统检查</span>
+        <span id="stabilityDiagCheckedAt">--</span>
+        <div class="topbar-spacer"></div>
+        <button id="stabilityDiagRefreshBtn" class="primary" type="button">立即检查</button>
+        <button id="stabilityDiagCopyBtn" type="button">复制诊断</button>
+      </div>
+      <div class="stability-system-grid" id="stabilitySystemGrid">
+        <article class="stability-system-card pending" data-system-health="facebook"><div class="stability-system-card-head"><strong>Facebook API</strong><span>检查中</span></div><p>Page Token / 网关状态</p><small>--</small></article>
+        <article class="stability-system-card pending" data-system-health="webhook"><div class="stability-system-card-head"><strong>Facebook Webhook</strong><span>检查中</span></div><p>消息订阅 / 最近事件</p><small>--</small></article>
+        <article class="stability-system-card pending" data-system-health="reconcile"><div class="stability-system-card-head"><strong>自动补漏</strong><span>检查中</span></div><p>增量对账 / 自动追回</p><small>--</small></article>
+        <article class="stability-system-card pending" data-system-health="sqlite"><div class="stability-system-card-head"><strong>SQLite</strong><span>检查中</span></div><p>Facebook / LINE 本地事件库</p><small>--</small></article>
+        <article class="stability-system-card pending" data-system-health="line"><div class="stability-system-card-head"><strong>LINE</strong><span>检查中</span></div><p>Webhook / Channel Token</p><small>--</small></article>
+        <article class="stability-system-card pending" data-system-health="translation"><div class="stability-system-card-head"><strong>翻译队列</strong><span>检查中</span></div><p>引擎 / 待处理 / 错误</p><small>--</small></article>
+        <article class="stability-system-card pending" data-system-health="gpt"><div class="stability-system-card-head"><strong>GPT</strong><span>检查中</span></div><p>工作台 / 绑定 / 客户锁</p><small>--</small></article>
+        <article class="stability-system-card pending" data-system-health="runtime"><div class="stability-system-card-head"><strong>桌面运行</strong><span>检查中</span></div><p>CPU / 内存 / 进程</p><small>--</small></article>
+      </div>
+      <div class="stability-diag-section-head stability-diag-gpt-head"><strong>GPT / Meta 客户路由</strong><span id="stabilityDiagOverallBadge" class="stability-diag-badge idle">等待客户锁检查</span><small>用于定位切换客户、错误绑定和 GPT 导航。</small></div>
+      <div class="stability-diag-grid">
+        <div><span>当前客户</span><strong id="stabilityDiagCustomer">--</strong><small id="stabilityDiagCustomerKey">--</small></div>
+        <div><span>客户选择权威</span><strong id="stabilityDiagAuthority">--</strong><small id="stabilityDiagPending">--</small></div>
+        <div><span>GPT绑定</span><strong id="stabilityDiagBinding">--</strong><small id="stabilityDiagConversation">--</small></div>
+        <div><span>最近GPT导航</span><strong id="stabilityDiagNavigation">--</strong><small id="stabilityDiagNavigationCount">--</small></div>
+        <div><span>GPT快速切换</span><strong id="stabilityDiagFastRoute">0 次</strong><small id="stabilityDiagFastRouteDetail">最近完成 --</small></div>
+        <div><span>后台轮询锁命中</span><strong id="stabilityDiagObserveHits">0</strong><small>命中越多，代表越多DOM轮询被省掉</small></div>
+        <div><span>错误目标拦截</span><strong id="stabilityDiagBlocked">0</strong><small id="stabilityDiagIgnored">--</small></div>
+        <div><span>GPT附件初始化</span><strong id="stabilityDiagAttachment">--</strong><small id="stabilityDiagAttachmentDetail">--</small></div>
+      </div>
+      <div class="stability-diag-section-head"><strong>流程运行中心</strong><small>V1.27.276：客户天数核对修复 + 可手动校准并按 JST 05:00 自动递增；不恢复旧 Day 自动聊天流程。</small></div>
+      <div class="stability-diag-grid">
+        <div><span>当前流程状态</span><strong id="stabilityWorkflowState">--</strong><small id="stabilityWorkflowStateDetail">--</small></div>
+        <div><span>流程队列</span><strong id="stabilityWorkflowQueue">--</strong><small id="stabilityWorkflowQueueDetail">--</small></div>
+        <div><span>幂等保护</span><strong id="stabilityWorkflowIdempotency">--</strong><small id="stabilityWorkflowIdempotencyDetail">--</small></div>
+        <div><span>异常恢复</span><strong id="stabilityWorkflowRecovery">--</strong><small id="stabilityWorkflowRecoveryDetail">--</small></div>
+        <div><span>最近流程操作</span><strong id="stabilityWorkflowLast">--</strong><small id="stabilityWorkflowLastDetail">--</small></div>
+        <div><span>非法状态跳转</span><strong id="stabilityWorkflowIllegal">0</strong><small>应长期保持 0</small></div>
+      </div>
+      <div class="stability-diag-section-head"><strong>长期运行与自恢复</strong><small>只监控运行指标和队列元数据，不记录聊天正文、Cookie、Token 或密码。</small></div>
+      <div class="stability-diag-grid">
+        <div><span>监控时长</span><strong id="stabilityLongRunDuration">--</strong><small id="stabilityLongRunSamples">--</small></div>
+        <div><span>内存趋势</span><strong id="stabilityLongRunMemory">--</strong><small id="stabilityLongRunMemoryDetail">--</small></div>
+        <div><span>事件循环</span><strong id="stabilityLongRunLoop">--</strong><small id="stabilityLongRunLoopDetail">--</small></div>
+        <div><span>安全自恢复</span><strong id="stabilityLongRunHeal">--</strong><small id="stabilityLongRunHealDetail">--</small></div>
+        <div><span>压力测试</span><strong id="stabilityLongRunStress">未运行</strong><small id="stabilityLongRunStressDetail">只使用合成任务，不发送真实客户消息</small></div>
+        <div><span>配置迁移</span><strong id="stabilityMigrationVersion">--</strong><small id="stabilityMigrationDetail">--</small></div>
+      </div>
+      <div class="stability-diagnostics-toolbar">
+        <button id="stabilityBackupBtn" type="button">备份关键状态</button>
+        <button id="stabilityRestoreBtn" type="button">恢复关键状态</button>
+        <button id="stabilityStressBtn" type="button">运行安全压力测试</button>
+        <button id="stabilityExportReportBtn" type="button">导出长期性能报告</button>
+      </div>
+      <div class="stability-diag-section-head"><strong>最近稳定性事件</strong><small>重点看 trusted selection、header observation ignored、live target blocked 和 GPT navigation。</small></div>
+      <div id="stabilityDiagEventList" class="stability-diag-event-list"><div class="dashboard-empty">暂无事件</div></div>
+      <details class="stability-diag-raw">
+        <summary>查看原始诊断 JSON</summary>
+        <pre id="stabilityDiagRaw">{}</pre>
+      </details>
+      <div class="modal-actions"><button data-close="stabilityDiagnosticsModal">完成</button></div>
+    </div>
+  </div>
+
+  <div class="modal hidden" id="handoffHealthModal">
+    <div class="modal-card handoff-health-card">
+      <div class="modal-head">
+        <div>
+          <h2>LINE 承接链路健康</h2>
+          <p>检查已绑定任务的 LINE、CRM、任务提交和 GPT 历史连续性；修复只处理异常段，不重新绑定整条客户。</p>
+        </div>
+        <button data-close="handoffHealthModal">×</button>
+      </div>
+      <div class="handoff-health-toolbar">
+        <span id="handoffHealthOverallBadge" class="handoff-health-overall idle">尚未检查</span>
+        <span id="handoffHealthCheckedAt">--</span>
+        <div class="topbar-spacer"></div>
+        <button id="handoffHealthSyncBtn" type="button">同步团队后检查</button>
+        <button id="handoffHealthRefreshBtn" class="primary" type="button">重新检查</button>
+        <button id="handoffHealthExportBtn" type="button">导出诊断包</button>
+      </div>
+      <div class="handoff-health-summary">
+        <div><span>已绑定任务</span><strong id="handoffHealthBoundCount">0</strong></div>
+        <div class="healthy"><span>健康</span><strong id="handoffHealthHealthyCount">0</strong></div>
+        <div class="unhealthy"><span>异常</span><strong id="handoffHealthUnhealthyCount">0</strong></div>
+      </div>
+      <div class="handoff-health-section-head">
+        <div><strong>承接任务完整性</strong><small>绿色表示完整闭环；异常任务会显示断点和可用的局部恢复操作。</small></div>
+      </div>
+      <div id="handoffHealthTaskList" class="handoff-health-task-list"><div class="dashboard-empty">正在检查…</div></div>
+      <div class="handoff-health-section-head">
+        <div><strong>最近链路事件</strong><small>只显示路由、校验和错误元数据，不包含聊天正文、Cookie、密钥或代理密码。删除只清理诊断记录，不删除客户、任务或绑定。</small></div>
+        <div class="handoff-health-trace-actions"><button id="handoffHealthSelectProblemsBtn" type="button">选择异常</button><button id="handoffHealthDeleteSelectedBtn" class="danger" type="button">删除所选</button></div>
+      </div>
+      <div id="handoffHealthTraceList" class="handoff-health-trace-list"><div class="dashboard-empty">暂无事件</div></div>
+      <div class="modal-actions"><button data-close="handoffHealthModal">完成</button></div>
+    </div>
+  </div>
+
+  <div class="modal hidden" id="diagModal">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3 id="diagModalTitle">账号诊断</h3>
+        <button class="close" data-close="diagModal">×</button>
+      </div>
+      <pre id="diagText"></pre>
+    </div>
+  </div>
+
+  <script src="./renderer.js"></script>
+</body>
+</html>
