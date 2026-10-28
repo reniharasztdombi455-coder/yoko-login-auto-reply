@@ -1,6 +1,8 @@
 const form=document.getElementById('loginForm');
 const button=document.getElementById('loginButton');
 const status=document.getElementById('status');
+const remember=document.getElementById('rememberPassword');
+(async()=>{try{const saved=await window.yokoLogin.rememberedLogin();if(saved?.ok&&saved.username&&saved.password){document.getElementById('username').value=saved.username;document.getElementById('password').value=saved.password;if(remember)remember.checked=true;}}catch{}})();
 document.getElementById('togglePassword')?.addEventListener('click',()=>{
   const input=document.getElementById('password');
   const toggle=document.getElementById('togglePassword');
@@ -14,7 +16,10 @@ form?.addEventListener('submit',async event=>{
   if(button)button.disabled=true;
   if(status)status.textContent='正在验证账号…';
   try{
-    await window.yokoLogin.login({username:document.getElementById('username')?.value||'',password:document.getElementById('password')?.value||''});
+    const username=document.getElementById('username')?.value||'';
+    const passwordValue=document.getElementById('password')?.value||'';
+    await window.yokoLogin.login({username,password:passwordValue});
+    try{await window.yokoLogin.saveRememberedLogin({remember:!!remember?.checked,username,password:passwordValue});}catch{}
     if(status)status.style.color='#287653';
     if(status)status.textContent='登录成功，正在打开软件…';
     const password=document.getElementById('password');if(password)password.value='';
