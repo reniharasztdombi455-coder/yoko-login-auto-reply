@@ -27269,6 +27269,17 @@ ipcMain.handle('app-auth-login',async(event,payload={})=>{
   const actual=Buffer.from(appAuthHash(password,user.salt),'hex');
   const expected=Buffer.from(String(user.passwordHash||''),'hex');
   if(actual.length!==expected.length||!crypto.timingSafeEqual(actual,expected))throw Error('账号或密码错误。');
+  const rememberLogin=payload?.remember===true;
+  const rememberFile=appAuthRememberFilePath();
+  if(rememberLogin&&safeStorage.isEncryptionAvailable()){
+    try{
+      fs.mkdirSync(path.dirname(rememberFile),{recursive:true});
+      const encrypted=safeStorage.encryptString(JSON.stringify({username,password})).toString('base64');
+      fs.writeFileSync(rememberFile,JSON.stringify({version:1,encrypted}),{mode:0o600});
+    }catch(error){logger('app-auth-remember-save-error',String(error?.message||error).slice(0,120));}
+  }else{
+    try{fs.unlinkSync(rememberFile);}catch{}
+  }
   appLoginSession={authenticated:true,user:appAuthPublic(user)};
   sendUI('app-auth-updated',appAuthPublicState());
   if(appLoginWindow&&!appLoginWindow.isDestroyed()){
