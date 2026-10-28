@@ -18,8 +18,7 @@ form?.addEventListener('submit',async event=>{
   try{
     const username=document.getElementById('username')?.value||'';
     const passwordValue=document.getElementById('password')?.value||'';
-    await window.yokoLogin.login({username,password:passwordValue});
-    try{await window.yokoLogin.saveRememberedLogin({remember:!!remember?.checked,username,password:passwordValue});}catch{}
+    await window.yokoLogin.login({username,password:passwordValue,remember:!!remember?.checked});
     if(status)status.style.color='#287653';
     if(status)status.textContent='登录成功，正在打开软件…';
     const password=document.getElementById('password');if(password)password.value='';
